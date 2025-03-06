@@ -1,0 +1,11 @@
+services:  
+  app:
+    image: app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    ports:
+      - 8080:8080

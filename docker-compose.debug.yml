@@ -1,0 +1,13 @@
+services:
+  app:
+    image: app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    ports:
+      - 8080:8080
+      - 9229:9229
+    command: ["node", "--inspect=0.0.0.0:9229", "app.js"]

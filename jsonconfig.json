@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES6"
+  },
+  "exclude": [
+    "frontend/build",
+    "frontend/node_modules",
+    "backend/node_modules"
+  ]
+}
