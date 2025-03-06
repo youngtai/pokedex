@@ -6,7 +6,7 @@ from litestar.static_files import StaticFilesConfig
 
 @get("/api")
 async def hello_world() -> str:
-    return "Hello, World!"
+    return "Hello, Pokedex!"
 
 @get("/api/hello/{name:str}")
 async def hello_name(name: str) -> Dict[str, str]:
