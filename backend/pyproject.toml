@@ -1,24 +1,26 @@
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-[tool.poetry]
+[project]
 name = "app-backend"
 version = "0.1.0"
 description = "Backend for Pokedex"
-authors = ["youngtai <youngtaiahn.work@gmail.com>"]
+authors = [
+    {name = "youngtai", email = "youngtaiahn.work@gmail.com"},
+]
 readme = "README.md"
-license = "MIT"
-packages = [{include = "app"}]
+requires-python = ">=3.13"
 
-[tool.poetry.dependencies]
-python = ">=3.13"
-litestar = ">=2.0.0"
-uvicorn = ">=0.23.0"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.3.0",
+    "litestar>=2.0.0",
+    "uvicorn>=0.23.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = ">=7.0.0"
-ruff = ">=0.9.9"
-mypy = ">=1.0.0"
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.9.9",
+    "mypy>=1.0.0",
+]
 
 [tool.mypy]
 python_version = "3.13"

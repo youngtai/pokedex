@@ -3,6 +3,7 @@ from pathlib import Path
 from litestar import Litestar, get, post
 from litestar.response import Response
 from litestar.static_files import StaticFilesConfig
+import uvicorn
 
 @get("/api")
 async def hello_world() -> str:
@@ -45,5 +46,4 @@ app = Litestar(
 )
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8080)

@@ -1,13 +1,32 @@
 services:
-  pokedex:
-    image: pokedex
+  mcp-server:
     build:
       context: .
       dockerfile: ./Dockerfile
     environment:
-      PYTHONUNBUFFERED: 1
-      PYTHONDONTWRITEBYTECODE: 1
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - DEBUG=1
     ports:
-      - 8080:8080
-      - 9229:9229
-    command: ["node", "--inspect=0.0.0.0:9229", "app.js"]
+      - "8000:8000"
+      - "5679:5679"  # Different port for debugpy to avoid conflicts
+    volumes:
+      - ./backend/mcp-server:/app/backend/mcp-server
+    command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5679", "-m", "mcp-server.main"]
+  web-service:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      - MCP_SERVER_URL=http://mcp-server:8000
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - DEBUG=1
+    ports:
+      - "8080:8080"
+      - "5678:5678"  # Port for debugpy
+    volumes:
+      - ./backend/web-service:/app/backend/web-service
+    command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+    depends_on:
+      - mcp-server
