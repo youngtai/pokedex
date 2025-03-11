@@ -1,4 +1,4 @@
-# web-service/Dockerfile
+# Dockerfile
 # Build stage for frontend
 FROM node:lts-alpine AS frontend-builder
 WORKDIR /app/frontend
@@ -7,25 +7,23 @@ RUN npm install
 COPY frontend .
 RUN npm run build
 
-# Build stage for backend web-service
+# Build stage for backend services
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
-WORKDIR /app/backend
-COPY backend/pyproject.toml ./
-COPY backend/README.md ./
-COPY backend/web-service/app ./app
+WORKDIR /app
+
+# Install dependencies using uv
+COPY backend/pyproject.toml backend/README.md ./
 RUN uv pip install --system .
+
+# Copy application code
+COPY backend/ ./backend/
+
+# Copy frontend build from previous stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-EXPOSE 8080
-CMD ["uvicorn", "app.service:app", "--host", "0.0.0.0", "--port", "8080"]
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+  PYTHONDONTWRITEBYTECODE=1
 
-# mcp-server/Dockerfile
-FROM ghcr.io/astral-sh/uv:python3.13-alpine
-WORKDIR /app/backend
-COPY backend/pyproject.toml ./
-COPY backend/README.md ./
-COPY backend/mcp-server/app ./mcp-server
-RUN uv pip install --system .
-
-EXPOSE 8000
-CMD ["python", "-m", "mcp-server.mcp-service"]
+# We now only need to run the web service, which will manage the MCP server internally
+CMD ["python", "-m", "backend.web-service.app.service"]

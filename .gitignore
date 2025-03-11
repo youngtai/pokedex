@@ -16,6 +16,7 @@ lerna-debug.log*
 # Backend
 /backend/.venv
 /backend/app/__pycache__
+/backend/.env
 
 # Editor directories and files
 .vscode/*

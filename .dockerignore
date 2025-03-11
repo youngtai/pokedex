@@ -26,5 +26,6 @@
 **/values.dev.yaml
 **/zip-scripts.sh
 **/__pycache__
+**/.venv
 jsonconfig.json
 LICENSE
