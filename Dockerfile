@@ -27,3 +27,6 @@ ENV PYTHONUNBUFFERED=1 \
 
 # We now only need to run the web service, which will manage the MCP server internally
 CMD ["python", "-m", "backend.web-service.app.service"]
+# TODO Can run using litestar, which uses uvicorn
+# EXPOSE 8080
+# CMD ["litestar", "run", "--host", "0.0.0.0", "--port", "8080"]

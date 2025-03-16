@@ -27,5 +27,6 @@
 **/zip-scripts.sh
 **/__pycache__
 **/.venv
+**/.old.py
 jsonconfig.json
 LICENSE

@@ -8,5 +8,3 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-    volumes:
-      - ./frontend/dist:/app/frontend/dist
