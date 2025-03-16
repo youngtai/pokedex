@@ -4,25 +4,22 @@ import "./App.css";
 import ReactMarkdown from "react-markdown";
 
 function App() {
-  const [messages, setMessages] = useState([]);
+  const [displayText, setDisplayText] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
-  const messagesEndRef = useRef(null);
+  const displayRef = useRef(null);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when display changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    displayRef.current?.scrollTo(0, displayRef.current.scrollHeight);
+  }, [displayText]);
 
   // Initial welcome message
   useEffect(() => {
-    setMessages([
-      {
-        sender: "bot",
-        text: "# Welcome to the Pokédex Chat!\n\nI can help you with information about Pokémon. Ask me anything about Pokémon, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know?",
-      },
-    ]);
+    setDisplayText(
+      "# Welcome to the Pokédex!\n\nI can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know?"
+    );
   }, []);
 
   const processInput = async (userInput) => {
@@ -52,7 +49,7 @@ function App() {
       return responseJson.data;
     } catch (error) {
       console.error("Error processing chat query:", error);
-      return "Sorry, I encountered an error while processing your question. Please try again.";
+      return "Error: Unable to retrieve Pokémon data. Check Pokédex connection and try again.";
     }
   };
 
@@ -60,22 +57,17 @@ function App() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message
-    const userMessage = { sender: "user", text: input };
-    setMessages((prev) => [...prev, userMessage]);
-
     // Clear input and set loading
+    const userQuery = input;
     setInput("");
     setLoading(true);
 
     try {
       // Process user input
-      const response = await processInput(input);
+      const response = await processInput(userQuery);
 
-      // Format bot message
-      let botMessage = { sender: "bot", text: response };
-
-      setMessages((prev) => [...prev, botMessage]);
+      // Update the display with the new information
+      setDisplayText(response);
 
       // Add bot response to chat history
       setChatHistory((prev) => [
@@ -87,64 +79,74 @@ function App() {
       ]);
     } catch (error) {
       console.error("Error processing request:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "bot",
-          text: "Sorry, I encountered an error while processing your request.",
-        },
-      ]);
+      setDisplayText("Error: Pokédex data retrieval failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="pokedex-container">
-      <header className="pokedex-header">
-        <h1>Pokédex Chat</h1>
-      </header>
-
-      <div className="messages-container">
-        {messages.map((msg, index) => (
-          <div key={index} className={`message ${msg.sender}`}>
-            <div className="message-content">
-              {msg.sender === "bot" ? (
-                <div className="bot-message">
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
-                </div>
-              ) : (
-                <p>{msg.text}</p>
-              )}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="message bot">
-            <div className="message-content">
-              <div className="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+    <div className="pokedex-device">
+      <div className="pokedex-top">
+        <div className="blue-light"></div>
+        <div className="small-light red"></div>
+        <div className="small-light yellow"></div>
+        <div className="small-light green"></div>
       </div>
 
-      <form onSubmit={handleSubmit} className="input-form">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything about Pokémon..."
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading || !input.trim()}>
-          Send
-        </button>
-      </form>
+      <div className="pokedex-screen-container">
+        <div className="pokedex-screen">
+          {loading ? (
+            <div className="loading-animation">
+              <div className="pokeball-loading"></div>
+              <p>Searching Pokédex database...</p>
+            </div>
+          ) : (
+            <div className="screen-content" ref={displayRef}>
+              <ReactMarkdown>{displayText}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="pokedex-divider">
+        <div className="hinge"></div>
+        <div className="hinge"></div>
+      </div>
+
+      <div className="pokedex-bottom">
+        <div className="d-pad">
+          <div className="d-pad-row">
+            <div className="d-pad-btn up"></div>
+          </div>
+          <div className="d-pad-row">
+            <div className="d-pad-btn left"></div>
+            <div className="d-pad-btn center"></div>
+            <div className="d-pad-btn right"></div>
+          </div>
+          <div className="d-pad-row">
+            <div className="d-pad-btn down"></div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="input-area">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask Pokédex..."
+            disabled={loading}
+            className="pokedex-input"
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="pokedex-button"
+          >
+            SEARCH
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
