@@ -1,6 +1,6 @@
 # Dockerfile
 # Build stage for frontend
-FROM node:lts-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:23-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
@@ -8,6 +8,7 @@ COPY frontend .
 RUN npm run build
 
 # Build stage for backend services
+# FROM --platform=$TARGETPLATFORM ghcr.io/astral-sh/uv:python3.13-alpine
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 WORKDIR /app
 
@@ -27,6 +28,3 @@ ENV PYTHONUNBUFFERED=1 \
 
 # We now only need to run the web service, which will manage the MCP server internally
 CMD ["python", "-m", "backend.web-service.app.service"]
-# TODO Can run using litestar, which uses uvicorn
-# EXPOSE 8080
-# CMD ["litestar", "run", "--host", "0.0.0.0", "--port", "8080"]

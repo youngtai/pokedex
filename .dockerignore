@@ -1,7 +1,6 @@
 **/.classpath
 **/.dockerignore
 **/.eslintrc.cjs
-# **/.env
 **/.git
 **/.gitignore
 **/.project

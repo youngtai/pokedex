@@ -1,26 +1,106 @@
-// frontend/src/App.jsx
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-import ReactMarkdown from "react-markdown";
+import PokedexLeft from "./components/PokedexLeft";
+import PokedexRight from "./components/PokedexRight";
+import useSpeechSynthesis from "./hooks/useSpeechSynthesis";
+import usePokemonCry from "./hooks/usePokemonCry";
+import { getAvailableSpriteKeys } from "./utils/spriteUtils";
 
 function App() {
   const [displayText, setDisplayText] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
+  const [currentPokemon, setCurrentPokemon] = useState(null);
+  const [currentSpriteIndex, setCurrentSpriteIndex] = useState(0);
+  const [structuredData, setStructuredData] = useState(null);
+  const [activeSection, setActiveSection] = useState(0);
+
   const displayRef = useRef(null);
+  const contentRef = useRef(null);
+  // Keep track of mounted state to prevent state updates after unmounting
+  const isMounted = useRef(true);
+
+  // Custom hooks
+  const {
+    isSpeaking,
+    voiceOptions,
+    selectedVoice,
+    setSelectedVoice,
+    speakText,
+    stopSpeaking,
+  } = useSpeechSynthesis();
+
+  const { crySoundLoaded, playCry } = usePokemonCry(
+    currentPokemon?.cry_url,
+    currentPokemon?.cry_url_backup
+  );
+
+  // Set isMounted to false when component unmounts
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Scroll to bottom when display changes
   useEffect(() => {
-    displayRef.current?.scrollTo(0, displayRef.current.scrollHeight);
-  }, [displayText]);
+    if (displayRef.current) {
+      displayRef.current.scrollTo(0, displayRef.current.scrollHeight);
+    }
+  }, [displayText, structuredData, activeSection]);
 
   // Initial welcome message
   useEffect(() => {
+    const initialData = {
+      sections: [
+        {
+          title: "Welcome to the Pokédex!",
+          content:
+            "I can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know?",
+        },
+      ],
+    };
+    setStructuredData(initialData);
     setDisplayText(
       "# Welcome to the Pokédex!\n\nI can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know?"
     );
   }, []);
+
+  const cycleSprite = () => {
+    if (!currentPokemon) return;
+
+    // Get all available sprites
+    const spriteKeys = getAvailableSpriteKeys(currentPokemon);
+
+    if (spriteKeys.length === 0) return;
+
+    // Cycle to the next sprite
+    const nextIndex = (currentSpriteIndex + 1) % spriteKeys.length;
+    setCurrentSpriteIndex(nextIndex);
+  };
+
+  // Function to help users select all text in the active section
+  const selectSectionText = () => {
+    if (!contentRef.current) return;
+
+    // Select the text in the current section
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(contentRef.current);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  // Function to speak the current active section
+  const speakCurrentSection = () => {
+    if (
+      structuredData?.sections &&
+      structuredData.sections[activeSection]?.content
+    ) {
+      speakText(structuredData.sections[activeSection].content);
+    }
+  };
 
   const processInput = async (userInput) => {
     // Add user input to chat history
@@ -46,10 +126,61 @@ function App() {
 
       const responseJson = await response.json();
       console.log("Response from server:", responseJson);
-      return responseJson.data;
+
+      // Check if component is still mounted before updating state
+      if (!isMounted.current) return { text: "", structuredData: null };
+
+      // Process Pokemon data if it exists
+      if (responseJson.pokemon_data) {
+        setCurrentPokemon(responseJson.pokemon_data);
+        // Reset sprite index when loading a new Pokemon
+        setCurrentSpriteIndex(0);
+      } else {
+        setCurrentPokemon(null);
+      }
+
+      // Set structured data if available
+      if (responseJson.structured_data) {
+        // Ensure activeSection is within bounds
+        const newStructuredData = responseJson.structured_data;
+        setStructuredData(newStructuredData);
+
+        // Reset to first section
+        if (
+          newStructuredData.sections &&
+          newStructuredData.sections.length > 0
+        ) {
+          setActiveSection(0);
+        }
+      }
+
+      return {
+        text: responseJson.text || "",
+        structuredData: responseJson.structured_data,
+      };
     } catch (error) {
       console.error("Error processing chat query:", error);
-      return "Error: Unable to retrieve Pokémon data. Check Pokédex connection and try again.";
+
+      // Check if component is still mounted before updating state
+      if (!isMounted.current) return { text: "", structuredData: null };
+
+      setCurrentPokemon(null);
+      const errorData = {
+        sections: [
+          {
+            title: "Error",
+            content:
+              "Error: Unable to retrieve Pokémon data. Check Pokédex connection and try again.",
+          },
+        ],
+      };
+      setStructuredData(errorData);
+      setActiveSection(0);
+
+      return {
+        text: "Error: Unable to retrieve Pokémon data. Check Pokédex connection and try again.",
+        structuredData: errorData,
+      };
     }
   };
 
@@ -62,91 +193,118 @@ function App() {
     setInput("");
     setLoading(true);
 
+    // Stop any ongoing speech
+    stopSpeaking();
+
     try {
       // Process user input
       const response = await processInput(userQuery);
 
+      // Check if component is still mounted
+      if (!isMounted.current) return;
+
       // Update the display with the new information
-      setDisplayText(response);
+      setDisplayText(response.text || "");
 
       // Add bot response to chat history
       setChatHistory((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: response,
+          content: response.text || "",
+          structuredData: response.structuredData,
         },
       ]);
+
+      // Read the summary section aloud after a short delay to ensure the UI has updated
+      setTimeout(() => {
+        if (
+          response.structuredData &&
+          response.structuredData.sections &&
+          response.structuredData.sections.length > 0
+        ) {
+          // Read the first section (summary) aloud
+          speakText(response.structuredData.sections[0].content);
+        } else if (response.text) {
+          // If no structured data, read the response text
+          speakText(response.text);
+        }
+      }, 500);
     } catch (error) {
       console.error("Error processing request:", error);
+
+      // Check if component is still mounted
+      if (!isMounted.current) return;
+
       setDisplayText("Error: Pokédex data retrieval failed. Please try again.");
+      const errorData = {
+        sections: [
+          {
+            title: "Error",
+            content: "Error: Pokédex data retrieval failed. Please try again.",
+          },
+        ],
+      };
+      setStructuredData(errorData);
+      setActiveSection(0);
     } finally {
-      setLoading(false);
+      // Check if component is still mounted
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleSectionChange = (index) => {
+    // Stop speaking when changing sections
+    stopSpeaking();
+
+    // Make sure index is valid
+    if (
+      structuredData &&
+      structuredData.sections &&
+      index >= 0 &&
+      index < structuredData.sections.length
+    ) {
+      setActiveSection(index);
+
+      // Read the new section aloud
+      if (structuredData.sections[index]) {
+        speakText(structuredData.sections[index].content);
+      }
     }
   };
 
   return (
-    <div className="pokedex-device">
-      <div className="pokedex-top">
-        <div className="blue-light"></div>
-        <div className="small-light red"></div>
-        <div className="small-light yellow"></div>
-        <div className="small-light green"></div>
-      </div>
+    <div className="pokedex-container">
+      <PokedexLeft
+        loading={loading}
+        currentPokemon={currentPokemon}
+        currentSpriteIndex={currentSpriteIndex}
+        crySoundLoaded={crySoundLoaded}
+        playCry={playCry}
+        cycleSprite={cycleSprite}
+      />
 
-      <div className="pokedex-screen-container">
-        <div className="pokedex-screen">
-          {loading ? (
-            <div className="loading-animation">
-              <div className="pokeball-loading"></div>
-              <p>Searching Pokédex database...</p>
-            </div>
-          ) : (
-            <div className="screen-content" ref={displayRef}>
-              <ReactMarkdown>{displayText}</ReactMarkdown>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="pokedex-divider">
-        <div className="hinge"></div>
-        <div className="hinge"></div>
-      </div>
-
-      <div className="pokedex-bottom">
-        <div className="d-pad">
-          <div className="d-pad-row">
-            <div className="d-pad-btn up"></div>
-          </div>
-          <div className="d-pad-row">
-            <div className="d-pad-btn left"></div>
-            <div className="d-pad-btn center"></div>
-            <div className="d-pad-btn right"></div>
-          </div>
-          <div className="d-pad-row">
-            <div className="d-pad-btn down"></div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="input-area">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Pokédex..."
-            disabled={loading}
-            className="pokedex-input"
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="pokedex-button"
-          >
-            SEARCH
-          </button>
-        </form>
-      </div>
+      <PokedexRight
+        structuredData={structuredData}
+        activeSection={activeSection}
+        handleSectionChange={handleSectionChange}
+        displayText={displayText}
+        input={input}
+        setInput={setInput}
+        handleSubmit={handleSubmit}
+        loading={loading}
+        displayRef={displayRef}
+        contentRef={contentRef}
+        selectSectionText={selectSectionText}
+        isSpeaking={isSpeaking}
+        voiceOptions={voiceOptions}
+        selectedVoice={selectedVoice}
+        setSelectedVoice={setSelectedVoice}
+        speakCurrentSection={speakCurrentSection}
+        stopSpeaking={stopSpeaking}
+      />
     </div>
   );
 }
