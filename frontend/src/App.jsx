@@ -4,6 +4,7 @@ import PokedexLeft from "./components/PokedexLeft";
 import PokedexRight from "./components/PokedexRight";
 import useSpeechSynthesis from "./hooks/useSpeechSynthesis";
 import usePokemonCry from "./hooks/usePokemonCry";
+import useSpeechRecognition from "./hooks/useSpeechRecognition";
 import { getAvailableSpriteKeys } from "./utils/spriteUtils";
 
 function App() {
@@ -18,10 +19,9 @@ function App() {
 
   const displayRef = useRef(null);
   const contentRef = useRef(null);
-  // Keep track of mounted state to prevent state updates after unmounting
   const isMounted = useRef(true);
+  const formRef = useRef(null);
 
-  // Custom hooks
   const {
     isSpeaking,
     voiceOptions,
@@ -36,55 +36,132 @@ function App() {
     currentPokemon?.cry_url_backup
   );
 
-  // Set isMounted to false when component unmounts
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+
+    const userQuery = input.trim();
+    if (!userQuery || loading) return;
+
+    setInput("");
+    stopListening();
+    setLoading(true);
+    stopSpeaking();
+
+    try {
+      const response = await processInput(userQuery);
+
+      if (!isMounted.current) return;
+
+      setDisplayText(response.text || "");
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: response.text || "",
+          structuredData: response.structuredData,
+        },
+      ]);
+
+      setTimeout(() => {
+        if (
+          response.structuredData &&
+          response.structuredData.sections &&
+          response.structuredData.sections.length > 0
+        ) {
+          speakText(response.structuredData.sections[0].content);
+        } else if (response.text) {
+          speakText(response.text);
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Error processing request:", error);
+
+      if (!isMounted.current) return;
+
+      setDisplayText("Error: Pokédex data retrieval failed. Please try again.");
+      const errorData = {
+        sections: [
+          {
+            title: "Error",
+            content: "Error: Pokédex data retrieval failed. Please try again.",
+          },
+        ],
+      };
+      setStructuredData(errorData);
+      setActiveSection(0);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const {
+    transcript,
+    isListening,
+    isProcessing,
+    startListening,
+    stopListening,
+    resetTranscript,
+    error: speechError,
+  } = useSpeechRecognition({
+    language: "en-US",
+    onResult: (result, autoSubmit = true) => {
+      if (result.trim() && !loading) {
+        setInput(result.trim());
+
+        if (autoSubmit) {
+          setTimeout(() => {
+            handleSubmit();
+          }, 100);
+        }
+      }
+    },
+  });
+
   useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  // Scroll to bottom when display changes
   useEffect(() => {
     if (displayRef.current) {
       displayRef.current.scrollTo(0, displayRef.current.scrollHeight);
     }
   }, [displayText, structuredData, activeSection]);
 
-  // Initial welcome message
   useEffect(() => {
     const initialData = {
       sections: [
         {
           title: "Welcome to the Pokédex!",
           content:
-            "I can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know?",
+            "I can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know? Type below or click the microphone icon to speak.",
         },
       ],
     };
     setStructuredData(initialData);
     setDisplayText(
-      "# Welcome to the Pokédex!\n\nI can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know?"
+      "# Welcome to the Pokédex!\n\nI can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know? Type below or click the microphone icon to speak."
     );
   }, []);
 
   const cycleSprite = () => {
     if (!currentPokemon) return;
 
-    // Get all available sprites
     const spriteKeys = getAvailableSpriteKeys(currentPokemon);
 
     if (spriteKeys.length === 0) return;
 
-    // Cycle to the next sprite
     const nextIndex = (currentSpriteIndex + 1) % spriteKeys.length;
     setCurrentSpriteIndex(nextIndex);
   };
 
-  // Function to help users select all text in the active section
   const selectSectionText = () => {
     if (!contentRef.current) return;
 
-    // Select the text in the current section
     const selection = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(contentRef.current);
@@ -92,7 +169,6 @@ function App() {
     selection.addRange(range);
   };
 
-  // Function to speak the current active section
   const speakCurrentSection = () => {
     if (
       structuredData?.sections &&
@@ -103,7 +179,6 @@ function App() {
   };
 
   const processInput = async (userInput) => {
-    // Add user input to chat history
     const updatedHistory = [
       ...chatHistory,
       { role: "user", content: userInput },
@@ -127,25 +202,19 @@ function App() {
       const responseJson = await response.json();
       console.log("Response from server:", responseJson);
 
-      // Check if component is still mounted before updating state
       if (!isMounted.current) return { text: "", structuredData: null };
 
-      // Process Pokemon data if it exists
       if (responseJson.pokemon_data) {
         setCurrentPokemon(responseJson.pokemon_data);
-        // Reset sprite index when loading a new Pokemon
         setCurrentSpriteIndex(0);
       } else {
         setCurrentPokemon(null);
       }
 
-      // Set structured data if available
       if (responseJson.structured_data) {
-        // Ensure activeSection is within bounds
         const newStructuredData = responseJson.structured_data;
         setStructuredData(newStructuredData);
 
-        // Reset to first section
         if (
           newStructuredData.sections &&
           newStructuredData.sections.length > 0
@@ -161,7 +230,6 @@ function App() {
     } catch (error) {
       console.error("Error processing chat query:", error);
 
-      // Check if component is still mounted before updating state
       if (!isMounted.current) return { text: "", structuredData: null };
 
       setCurrentPokemon(null);
@@ -184,82 +252,9 @@ function App() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    // Clear input and set loading
-    const userQuery = input;
-    setInput("");
-    setLoading(true);
-
-    // Stop any ongoing speech
-    stopSpeaking();
-
-    try {
-      // Process user input
-      const response = await processInput(userQuery);
-
-      // Check if component is still mounted
-      if (!isMounted.current) return;
-
-      // Update the display with the new information
-      setDisplayText(response.text || "");
-
-      // Add bot response to chat history
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: response.text || "",
-          structuredData: response.structuredData,
-        },
-      ]);
-
-      // Read the summary section aloud after a short delay to ensure the UI has updated
-      setTimeout(() => {
-        if (
-          response.structuredData &&
-          response.structuredData.sections &&
-          response.structuredData.sections.length > 0
-        ) {
-          // Read the first section (summary) aloud
-          speakText(response.structuredData.sections[0].content);
-        } else if (response.text) {
-          // If no structured data, read the response text
-          speakText(response.text);
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error processing request:", error);
-
-      // Check if component is still mounted
-      if (!isMounted.current) return;
-
-      setDisplayText("Error: Pokédex data retrieval failed. Please try again.");
-      const errorData = {
-        sections: [
-          {
-            title: "Error",
-            content: "Error: Pokédex data retrieval failed. Please try again.",
-          },
-        ],
-      };
-      setStructuredData(errorData);
-      setActiveSection(0);
-    } finally {
-      // Check if component is still mounted
-      if (isMounted.current) {
-        setLoading(false);
-      }
-    }
-  };
-
   const handleSectionChange = (index) => {
-    // Stop speaking when changing sections
     stopSpeaking();
 
-    // Make sure index is valid
     if (
       structuredData &&
       structuredData.sections &&
@@ -268,7 +263,6 @@ function App() {
     ) {
       setActiveSection(index);
 
-      // Read the new section aloud
       if (structuredData.sections[index]) {
         speakText(structuredData.sections[index].content);
       }
@@ -294,7 +288,8 @@ function App() {
         input={input}
         setInput={setInput}
         handleSubmit={handleSubmit}
-        loading={loading}
+        formRef={formRef}
+        loading={loading || isProcessing}
         displayRef={displayRef}
         contentRef={contentRef}
         selectSectionText={selectSectionText}
@@ -304,6 +299,12 @@ function App() {
         setSelectedVoice={setSelectedVoice}
         speakCurrentSection={speakCurrentSection}
         stopSpeaking={stopSpeaking}
+        isListening={isListening}
+        isProcessing={isProcessing}
+        startListening={startListening}
+        stopListening={stopListening}
+        transcript={transcript}
+        speechError={speechError}
       />
     </div>
   );

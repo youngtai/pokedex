@@ -1,17 +1,25 @@
-from typing import Optional
-from contextlib import AsyncExitStack
+import asyncio
+import json
 import logging
-from typing import Dict, Any, List
-from litestar import Litestar, post
-from litestar.response import Response
+import os
+from contextlib import AsyncExitStack
+from functools import partial
+from typing import Annotated, Any, Dict, Optional
+
 import uvicorn
+from anthropic import Anthropic
+from dotenv import load_dotenv
+from groq import Groq
+from litestar import Litestar, MediaType, post
+from litestar.datastructures import UploadFile
+from litestar.datastructures.upload_file import UploadFile
+from litestar.enums import RequestEncodingType
+from litestar.params import Body
+from litestar.response import Response
+from litestar.static_files import create_static_files_router
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import OpenAI
-from dotenv import load_dotenv
-import json
-from anthropic import Anthropic
-from litestar.static_files import create_static_files_router
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +32,7 @@ class MCPClient:
         self.exit_stack = AsyncExitStack()
         self.openai = OpenAI()
         self.anthropic = Anthropic()
+        self.groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
     async def get_session(self):
         if self.session is None:
@@ -59,8 +68,41 @@ class MCPClient:
         if self.exit_stack:
             await self.exit_stack.aclose()
 
+    async def transcribe_audio(
+        self, audio_data: bytes, prompt: str = "", language: str = "en"
+    ) -> str:
+        try:
+            import tempfile
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".webm")
+            temp_file_path = temp_file.name
+            try:
+                with open(temp_file_path, "wb") as f:
+                    f.write(audio_data)
+
+                loop = asyncio.get_event_loop()
+                transcription_func = partial(
+                    self.groq_client.audio.transcriptions.create,
+                    file=(temp_file_path, open(temp_file_path, "rb")),
+                    model="distil-whisper-large-v3-en",
+                    response_format="json",
+                    temperature=0.0,
+                    prompt=prompt if prompt else None,
+                    language=language if language else None,
+                )
+
+                transcription = await loop.run_in_executor(None, transcription_func)
+                return transcription.text
+            finally:
+                import os
+
+                if os.path.exists(temp_file_path):
+                    os.unlink(temp_file_path)
+        except Exception as e:
+            logger.error(f"Error in transcribe_audio: {str(e)}")
+            raise
+
     async def process_query(self, query: str) -> Dict[str, Any]:
-        """Process a query using the OpenAI API and MCP tools"""
         messages = [
             {
                 "role": "system",
@@ -109,18 +151,15 @@ Respond in Markdown format with appropriate headers for each section.
                 function_args = json.loads(tool_call.arguments)
                 logger.info(f"Calling tool {function_name} with args {function_args}")
 
-                # Get the raw result
                 result = await self.session.call_tool(function_name, function_args)
                 logger.debug(f"Result: {result.model_dump_json()}")
 
-                # Extract raw data from result
                 try:
                     content_text = result.content[0].text
                     raw_data = json.loads(content_text)
                 except (json.JSONDecodeError, IndexError, AttributeError) as e:
                     logger.error(f"Error parsing result content: {e}")
 
-                # Add tool call results to messages
                 messages.append(
                     {
                         "type": "function_call_output",
@@ -129,12 +168,11 @@ Respond in Markdown format with appropriate headers for each section.
                     }
                 )
 
-                # Add specific instructions for structuring the response
                 messages.append(
                     {
                         "role": "system",
                         "content": """Structure your response as a JSON object with the following sections:
-                        
+
 {
   "sections": [
     {
@@ -173,10 +211,8 @@ Respond with ONLY valid JSON that follows this structure - do not include any ex
                     model="gpt-4o-mini", input=messages
                 )
 
-                # Parse the JSON response
                 try:
                     response_text = final_response.output_text.strip()
-                    # Extract JSON if it's wrapped in backticks
                     if response_text.startswith("```json") and response_text.endswith(
                         "```"
                     ):
@@ -196,7 +232,6 @@ Respond with ONLY valid JSON that follows this structure - do not include any ex
                     }
                 except json.JSONDecodeError as e:
                     logger.error(f"Error parsing structured response: {e}")
-                    # Fallback to returning the raw text if JSON parsing fails
                     return {
                         "structured_data": None,
                         "raw_markdown": final_response.output_text,
@@ -205,12 +240,11 @@ Respond with ONLY valid JSON that follows this structure - do not include any ex
             else:
                 logger.info("Model responded directly without using tools")
                 try:
-                    # Try to structure the direct response
                     messages.append(
                         {
                             "role": "system",
                             "content": """Convert your response to a JSON object with the following structure:
-                            
+
 {
   "sections": [
     {
@@ -236,7 +270,6 @@ Respond with ONLY valid JSON that follows this structure.""",
                     )
 
                     response_text = structured_response.output_text.strip()
-                    # Extract JSON if it's wrapped in backticks
                     if response_text.startswith("```json") and response_text.endswith(
                         "```"
                     ):
@@ -256,7 +289,6 @@ Respond with ONLY valid JSON that follows this structure.""",
                     }
                 except (json.JSONDecodeError, Exception) as e:
                     logger.error(f"Error structuring direct response: {e}")
-                    # Fallback to simple section format
                     return {
                         "structured_data": {
                             "sections": [
@@ -285,7 +317,6 @@ Respond with ONLY valid JSON that follows this structure.""",
             }
 
     def _convert_structured_to_markdown(self, structured_data: Dict[str, Any]) -> str:
-        """Convert structured data to Markdown format"""
         if not structured_data or "sections" not in structured_data:
             return "No data available"
 
@@ -326,6 +357,58 @@ async def pokedex_chat(data: Dict[str, str]) -> Dict[str, Any]:
         )
 
 
+@post("/service/speech-to-text", media_type=MediaType.JSON)
+async def speech_to_text(
+    data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
+) -> Response:
+    try:
+        if not data:
+            return Response(
+                content={"error": "No audio file provided"},
+                status_code=400,
+                media_type=MediaType.JSON,
+            )
+
+        # Log details about the received file
+        logger.info(
+            f"Received file: {data.filename}, content_type: {data.content_type}"
+        )
+
+        # Read the audio data
+        audio_data = await data.read()
+
+        if not audio_data:
+            return Response(
+                content={"error": "Empty audio file"},
+                status_code=400,
+                media_type=MediaType.JSON,
+            )
+
+        logger.info(f"Audio data size: {len(audio_data)} bytes")
+
+        # Get optional query parameters (could be added later)
+        language = "en"  # Default to English
+        prompt = (
+            "Pokémon names and terms"  # Default prompt to help with Pokémon terminology
+        )
+
+        # Transcribe the audio
+        transcript = await mcp_client.transcribe_audio(audio_data, prompt, language)
+
+        return Response(
+            content={"transcript": transcript},
+            status_code=200,
+            media_type=MediaType.JSON,
+        )
+    except Exception as e:
+        logger.error(f"Error in speech-to-text endpoint: {str(e)}")
+        return Response(
+            content={"error": str(e)},
+            status_code=500,
+            media_type=MediaType.JSON,
+        )
+
+
 async def startup() -> None:
     logger.info("Running app starup")
     await mcp_client.initialize_session()
@@ -345,7 +428,7 @@ static_files_router = create_static_files_router(
 )
 
 app = Litestar(
-    route_handlers=[pokedex_chat, static_files_router],
+    route_handlers=[pokedex_chat, speech_to_text, static_files_router],
     debug=True,
     on_startup=[startup],
     on_shutdown=[cleanup],

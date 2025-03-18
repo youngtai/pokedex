@@ -11,18 +11,20 @@ export default function PokedexRight({
   input,
   setInput,
   handleSubmit,
+  formRef,
   loading,
   displayRef,
   contentRef,
-  selectSectionText,
   isSpeaking,
-  voiceOptions,
-  selectedVoice,
-  setSelectedVoice,
   speakCurrentSection,
   stopSpeaking,
+  isListening,
+  isProcessing,
+  startListening,
+  stopListening,
+  transcript,
+  speechError,
 }) {
-  // Helper function to safely render structured content
   const renderStructuredContent = () => {
     if (
       !structuredData ||
@@ -32,7 +34,6 @@ export default function PokedexRight({
       return <ReactMarkdown>{displayText || ""}</ReactMarkdown>;
     }
 
-    // Make sure activeSection is valid
     const validIndex = Math.min(
       activeSection,
       structuredData.sections.length - 1
@@ -60,12 +61,12 @@ export default function PokedexRight({
 
         <SpeechControls
           isSpeaking={isSpeaking}
-          voiceOptions={voiceOptions}
-          selectedVoice={selectedVoice}
-          setSelectedVoice={setSelectedVoice}
           onSpeak={speakCurrentSection}
           onStop={stopSpeaking}
-          onSelectText={selectSectionText}
+          isListening={isListening}
+          isProcessing={isProcessing}
+          onStartListening={startListening}
+          onStopListening={stopListening}
         />
       </div>
 
@@ -82,18 +83,46 @@ export default function PokedexRight({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="pokedex-input-area">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Pokédex..."
-            disabled={loading}
-            className="pokedex-input"
-          />
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className="pokedex-input-area"
+        >
+          <div className="input-with-status">
+            <input
+              type="text"
+              value={
+                isListening
+                  ? transcript || "Listening..."
+                  : isProcessing
+                  ? "Processing speech..."
+                  : input
+              }
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                speechError === "microphone_access_error"
+                  ? "Microphone access denied - type your query"
+                  : "Ask Pokédex... or press and hold 🎤 to speak"
+              }
+              disabled={loading || isListening || isProcessing}
+              className="pokedex-input"
+            />
+            {isListening && <div className="listening-indicator"></div>}
+            {isProcessing && <div className="processing-indicator"></div>}
+            {speechError && !isListening && !isProcessing && (
+              <div
+                className="speech-error-indicator"
+                title={`Error: ${speechError}`}
+              >
+                ⚠️
+              </div>
+            )}
+          </div>
           <button
             type="submit"
-            disabled={loading || !input.trim()}
+            disabled={
+              loading || isProcessing || (!input.trim() && !transcript.trim())
+            }
             className="pokedex-button"
           >
             SEARCH
