@@ -103,10 +103,8 @@ function App() {
     isProcessing,
     startListening,
     stopListening,
-    resetTranscript,
     error: speechError,
   } = useSpeechRecognition({
-    language: "en-US",
     onResult: (result, autoSubmit = true) => {
       if (result.trim() && !loading) {
         setInput(result.trim());
