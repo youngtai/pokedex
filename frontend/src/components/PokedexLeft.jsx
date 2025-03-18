@@ -129,8 +129,8 @@ const DPad = styled.div`
     justify-content: center;
 
     .d-pad-btn {
-      width: ${({ small }) => (small ? "30px" : "40px")};
-      height: ${({ small }) => (small ? "30px" : "40px")};
+      width: ${({ small }) => (small ? "20px" : "30px")};
+      height: ${({ small }) => (small ? "20px" : "30px")};
       background-color: ${theme.colors.pokedexBlack};
       border-radius: 5px;
 
@@ -152,49 +152,10 @@ const DPad = styled.div`
   }
 `;
 
-const Button = styled.button`
-  background: ${theme.colors.pokedexBlack};
-  color: white;
-  border: 3px solid #333;
-  border-radius: 50%;
-  width: ${({ small }) => (small ? "40px" : "50px")};
-  height: ${({ small }) => (small ? "40px" : "50px")};
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-
-  &:hover:not(:disabled) {
-    transform: scale(1.05);
-    background: #333;
-  }
-
-  &:active:not(:disabled) {
-    transform: scale(0.95);
-    background: #111;
-  }
-
-  &:disabled {
-    background: #777;
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-
-  span {
-    font-size: 1.5rem;
-  }
-`;
-
 export default function PokedexLeft({
   loading,
   currentPokemon,
   currentSpriteIndex,
-  crySoundLoaded,
-  playCry,
-  cycleSprite,
 }) {
   const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
 
@@ -204,6 +165,7 @@ export default function PokedexLeft({
         <Light className="blue" small={isSmallScreen} />
         <Light className="small red" small={isSmallScreen} />
         <Light className="small yellow" small={isSmallScreen} />
+        <Light className="small green" small={isSmallScreen} />
       </TopSection>
 
       <ScreenContainer>
@@ -240,16 +202,16 @@ export default function PokedexLeft({
           )}
         </Screen>
         <Controls>
-          <Button
-            onClick={playCry}
-            disabled={!crySoundLoaded || !currentPokemon}
-            title="Play Pokémon cry"
-            small={isSmallScreen}
-          >
-            <span role="img" aria-label="Sound">
-              🔊
-            </span>
-          </Button>
+          <div
+            style={{
+              background: "green",
+              width: 120,
+              height: 60,
+              borderRadius: 8,
+              border: "2px solid black",
+            }}
+          />
+
           <DPad small={isSmallScreen}>
             <div className="d-pad-row">
               <div className="d-pad-btn up"></div>
@@ -263,16 +225,6 @@ export default function PokedexLeft({
               <div className="d-pad-btn down"></div>
             </div>
           </DPad>
-          <Button
-            onClick={cycleSprite}
-            disabled={!currentPokemon}
-            title="Change sprite view"
-            small={isSmallScreen}
-          >
-            <span role="img" aria-label="Image">
-              🔄
-            </span>
-          </Button>
         </Controls>
       </ScreenContainer>
     </PokedexLeftContainer>

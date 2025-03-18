@@ -372,7 +372,6 @@ function App() {
             }
           }
 
-          /* Pokemon type tag styling */
           .type-tag {
             display: inline-block;
             padding: 3px 8px;
@@ -445,9 +444,13 @@ function App() {
           loading={loading}
           currentPokemon={currentPokemon}
           currentSpriteIndex={currentSpriteIndex}
-          crySoundLoaded={crySoundLoaded}
-          playCry={playCry}
-          cycleSprite={cycleSprite}
+          isListening={isListening}
+          isSpeaking={isSpeaking}
+          onSpeak={speakCurrentSection}
+          onStop={stopSpeaking}
+          startListening={startListening}
+          stopListening={stopListening}
+          isProcessing={isProcessing}
         />
 
         <PokedexRight
@@ -463,18 +466,21 @@ function App() {
           displayRef={displayRef}
           contentRef={contentRef}
           selectSectionText={selectSectionText}
-          isSpeaking={isSpeaking}
           voiceOptions={voiceOptions}
           selectedVoice={selectedVoice}
           setSelectedVoice={setSelectedVoice}
-          speakCurrentSection={speakCurrentSection}
-          stopSpeaking={stopSpeaking}
           isListening={isListening}
           isProcessing={isProcessing}
           startListening={startListening}
           stopListening={stopListening}
           transcript={transcript}
           speechError={speechError}
+          crySoundLoaded={crySoundLoaded}
+          playCry={playCry}
+          cycleSprite={cycleSprite}
+          currentPokemon={currentPokemon}
+          onSpeak={speakCurrentSection}
+          onStop={stopSpeaking}
         />
       </PokedexContainer>
     </ThemeProvider>

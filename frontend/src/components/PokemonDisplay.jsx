@@ -126,7 +126,6 @@ export default function PokemonDisplay({ pokemon }) {
     return (
       <NoPokemonContainer>
         <PokeballIcon />
-        <p>No Pokémon data available</p>
       </NoPokemonContainer>
     );
   }

@@ -1,10 +1,11 @@
+/** @jsxImportSource @emotion/react */
+import { css, keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 import ReactMarkdown from "react-markdown";
+import { theme } from "../theme";
 import SectionTabs from "./SectionTabs";
 import SpeechControls from "./SpeechControls";
-import { theme } from "../theme";
 
-// Styled components
 const PokedexRightContainer = styled.div`
   flex: 1;
   background-color: ${theme.colors.pokedexRed};
@@ -26,21 +27,6 @@ const PokedexRightTop = styled.div`
   justify-content: flex-end;
   padding: ${theme.spacing.md};
   border-bottom: 3px solid ${theme.colors.pokedexDarkRed};
-`;
-
-const SmallLight = styled.div`
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background-color: ${theme.colors.pokedexGreen};
-  border: 2px solid rgba(0, 0, 0, 0.3);
-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.8);
-  margin-right: ${theme.spacing.md};
-
-  @media (max-width: ${theme.breakpoints.mobile}) {
-    width: 15px;
-    height: 15px;
-  }
 `;
 
 const ScreenContainer = styled.div`
@@ -202,7 +188,7 @@ const SearchButton = styled.button`
   }
 
   &:disabled {
-    background-color: #777;
+    background-color: ${theme.colors.pokedexBlack};
     cursor: not-allowed;
   }
 
@@ -259,6 +245,89 @@ const SpeechErrorIndicator = styled.div`
   font-size: 18px;
 `;
 
+const Button = styled.button`
+  background: lightgray;
+  color: white;
+  border: 2px solid black;
+  width: ${({ small }) => (small ? "40px" : "50px")};
+  height: ${({ small }) => (small ? "30px" : "40px")};
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+    background: #333;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+    background: #111;
+  }
+
+  &:disabled {
+    background: lightgray;
+    cursor: not-allowed;
+  }
+
+  span {
+    font-size: 1.5rem;
+  }
+`;
+
+const pulseRecording = keyframes`
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+`;
+
+const speechButtonStyle = css`
+  background-color: ${theme.colors.pokedexBlack};
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 5px;
+  border-radius: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+  transition: transform 0.1s, background-color 0.2s;
+  font-family: ${theme.fonts.pixel};
+  font-size: 14px;
+  padding: 10px;
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+    background-color: ${theme.colors.pokedexLightRed};
+  }
+
+  &.speaking {
+    background-color: rgba(255, 0, 0, 0.2);
+  }
+
+  &.listening {
+    background-color: ${theme.colors.pokedexLightRed};
+    animation: ${pulseRecording} 1.5s infinite;
+  }
+
+  &.processing {
+    background-color: ${theme.colors.pokedexYellow};
+    cursor: wait;
+  }
+`;
+
 export default function PokedexRight({
   structuredData,
   activeSection,
@@ -271,16 +340,22 @@ export default function PokedexRight({
   loading,
   displayRef,
   contentRef,
-  isSpeaking,
-  speakCurrentSection,
-  stopSpeaking,
   isListening,
   isProcessing,
   startListening,
   stopListening,
   transcript,
   speechError,
+  crySoundLoaded,
+  playCry,
+  cycleSprite,
+  currentPokemon,
+  isSpeaking,
+  onSpeak,
+  onStop,
 }) {
+  const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
+
   const renderStructuredContent = () => {
     if (
       !structuredData ||
@@ -313,12 +388,7 @@ export default function PokedexRight({
   return (
     <PokedexRightContainer>
       <PokedexRightTop>
-        <SmallLight className="green" />
-
         <SpeechControls
-          isSpeaking={isSpeaking}
-          onSpeak={speakCurrentSection}
-          onStop={stopSpeaking}
           isListening={isListening}
           isProcessing={isProcessing}
           onStartListening={startListening}
@@ -366,14 +436,58 @@ export default function PokedexRight({
               </SpeechErrorIndicator>
             )}
           </InputWithStatus>
-          <SearchButton
-            type="submit"
-            disabled={
-              loading || isProcessing || (!input.trim() && !transcript.trim())
-            }
-          >
-            SEARCH
-          </SearchButton>
+
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", justifyContent: "start" }}>
+              <Button
+                onClick={playCry}
+                disabled={!crySoundLoaded || !currentPokemon}
+                title="Play Pokémon cry"
+                small={isSmallScreen}
+                style={{ borderRadius: "8px 0 0 8px" }}
+              >
+                <span role="img" aria-label="Sound">
+                  🔊
+                </span>
+              </Button>
+              <Button
+                onClick={cycleSprite}
+                disabled={!currentPokemon}
+                title="Change sprite view"
+                small={isSmallScreen}
+                style={{ borderRadius: "0 8px 8px 0" }}
+              >
+                <span role="img" aria-label="Image">
+                  🔄
+                </span>
+              </Button>
+            </div>
+
+            <button
+              onClick={isSpeaking ? onStop : onSpeak}
+              css={speechButtonStyle}
+              className={isSpeaking ? "speaking" : ""}
+              title={isSpeaking ? "Stop reading" : "Read aloud"}
+              disabled={isProcessing}
+              type="button"
+            >
+              <span
+                role="img"
+                aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
+              >
+                READ
+              </span>
+            </button>
+
+            <SearchButton
+              type="submit"
+              disabled={
+                loading || isProcessing || (!input.trim() && !transcript.trim())
+              }
+            >
+              SEARCH
+            </SearchButton>
+          </div>
         </InputArea>
       </ScreenContainer>
     </PokedexRightContainer>

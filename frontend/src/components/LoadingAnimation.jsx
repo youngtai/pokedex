@@ -47,18 +47,10 @@ const PokeballSpinner = styled.div`
   }
 `;
 
-const LoadingText = styled.p`
-  margin-top: 20px;
-  font-family: ${(props) => props.theme.fonts.pixel};
-  font-size: 14px;
-  color: ${(props) => props.theme.colors.pokedexBlack};
-`;
-
 export default function LoadingAnimation() {
   return (
     <LoadingContainer>
       <PokeballSpinner />
-      <LoadingText>Searching Pokédex database...</LoadingText>
     </LoadingContainer>
   );
 }

@@ -1,3 +1,4 @@
+/** @jsxImportSource @emotion/react */
 import React, { useRef, useEffect } from "react";
 import { css, keyframes } from "@emotion/react";
 import { theme } from "../theme";
@@ -22,14 +23,14 @@ const speechControlsStyle = css`
 `;
 
 const speechButtonStyle = css`
-  background: none;
+  background: white;
   border: none;
   cursor: pointer;
   font-size: 1.2rem;
   padding: 5px;
-  border-radius: 50%;
+  border-radius: 12%;
   background-color: rgba(255, 255, 255, 0.2);
-  width: 32px;
+  width: 48px;
   height: 32px;
   display: flex;
   align-items: center;
@@ -59,9 +60,6 @@ const speechButtonStyle = css`
 `;
 
 export default function SpeechControls({
-  isSpeaking,
-  onSpeak,
-  onStop,
   isListening,
   isProcessing,
   onStartListening,
@@ -146,26 +144,12 @@ export default function SpeechControls({
   return (
     <div css={speechControlsStyle}>
       <button
-        onClick={isSpeaking ? onStop : onSpeak}
-        css={speechButtonStyle}
-        className={isSpeaking ? "speaking" : ""}
-        title={isSpeaking ? "Stop reading" : "Read aloud"}
-        disabled={isProcessing}
-      >
-        <span
-          role="img"
-          aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
-        >
-          {isSpeaking ? "🔇" : "🔈"}
-        </span>
-      </button>
-
-      <button
         ref={micButtonRef}
         css={speechButtonStyle}
         className={isListening ? "listening" : isProcessing ? "processing" : ""}
         title={isProcessing ? "Processing speech..." : "Push and hold to talk"}
         disabled={isProcessing}
+        type="button"
       >
         <span
           role="img"

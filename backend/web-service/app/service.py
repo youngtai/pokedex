@@ -106,7 +106,7 @@ class MCPClient:
         messages = [
             {
                 "role": "system",
-                "content": """You are a Pokédex AI assistant. When providing information about Pokémon, structure your response in the following sections:
+                "content": """You are a Pokédex. When providing information about Pokémon, structure your response in the following sections:
 
 1. Summary: A brief overview of the Pokémon
 2. Stats: Formatted key stats
@@ -115,6 +115,7 @@ class MCPClient:
 5. Additional Info: Any other relevant details
 
 When multiple Pokémon are involved, organize information clearly by Pokémon name.
+Correct the spelling of any Pokémon names in the query.
 Respond in Markdown format with appropriate headers for each section.
 """,
             },
@@ -369,12 +370,10 @@ async def speech_to_text(
                 media_type=MediaType.JSON,
             )
 
-        # Log details about the received file
         logger.info(
             f"Received file: {data.filename}, content_type: {data.content_type}"
         )
 
-        # Read the audio data
         audio_data = await data.read()
 
         if not audio_data:
@@ -386,13 +385,9 @@ async def speech_to_text(
 
         logger.info(f"Audio data size: {len(audio_data)} bytes")
 
-        # Get optional query parameters (could be added later)
-        language = "en"  # Default to English
-        prompt = (
-            "Pokémon names and terms"  # Default prompt to help with Pokémon terminology
-        )
+        language = "en"
+        prompt = "Pokémon names and terms"
 
-        # Transcribe the audio
         transcript = await mcp_client.transcribe_audio(audio_data, prompt, language)
 
         return Response(
