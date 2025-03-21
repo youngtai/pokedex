@@ -1,4 +1,3 @@
-/** @jsxImportSource @emotion/react */
 import React, { useRef, useEffect } from "react";
 import { css, keyframes } from "@emotion/react";
 import { theme } from "../theme";
@@ -23,33 +22,23 @@ const speechControlsStyle = css`
 `;
 
 const speechButtonStyle = css`
-  background: white;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
-  padding: 5px;
-  border-radius: 12%;
-  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background-color: ${theme.colors.pokedexBlack};
   width: 48px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 48px;
   user-select: none;
   touch-action: none;
   transition: transform 0.1s, background-color 0.2s;
 
   &:active:not(:disabled) {
     transform: scale(0.95);
-    background-color: ${theme.colors.pokedexLightRed};
-  }
-
-  &.speaking {
-    background-color: rgba(255, 0, 0, 0.2);
+    background-color: ${theme.colors.pokedexDarkRed};
   }
 
   &.listening {
-    background-color: ${theme.colors.pokedexLightRed};
+    background-color: ${theme.colors.pokedexBlack};
     animation: ${pulseRecording} 1.5s infinite;
   }
 
@@ -67,15 +56,23 @@ export default function SpeechControls({
 }) {
   const micButtonRef = useRef(null);
   const isMouseDownRef = useRef(false);
+  const timeoutRef = useRef(null);
+  const MIN_PRESS_DURATION = 1000; // 1 second minimum press duration
 
   useEffect(() => {
     const micButton = micButtonRef.current;
 
     if (!micButton) return;
+
     const handleMouseDown = (e) => {
       if (!isProcessing && !isListening) {
         isMouseDownRef.current = true;
-        onStartListening();
+        // Start a timer to check if the press is long enough
+        timeoutRef.current = setTimeout(() => {
+          // Only start listening after the minimum duration
+          onStartListening();
+        }, MIN_PRESS_DURATION);
+
         e.preventDefault();
       }
     };
@@ -83,36 +80,29 @@ export default function SpeechControls({
     const handleMouseUp = (e) => {
       if (isMouseDownRef.current) {
         isMouseDownRef.current = false;
+        clearTimeout(timeoutRef.current);
+
+        // If we've been listening (press was long enough), stop listening
         if (isListening) {
           onStopListening();
         }
+        // If the press was too short, do nothing (ignore the press)
+
         e.preventDefault();
       }
     };
 
     const handleTouchStart = (e) => {
-      if (!isProcessing && !isListening) {
-        isMouseDownRef.current = true;
-        onStartListening();
-        e.preventDefault();
-      }
+      handleMouseDown(e);
     };
 
     const handleTouchEnd = (e) => {
-      if (isMouseDownRef.current) {
-        isMouseDownRef.current = false;
-        if (isListening) {
-          onStopListening();
-        }
-        e.preventDefault();
-      }
+      handleMouseUp(e);
     };
 
     const handleMouseLeave = (e) => {
-      if (isMouseDownRef.current && isListening) {
-        isMouseDownRef.current = false;
-        onStopListening();
-        e.preventDefault();
+      if (isMouseDownRef.current) {
+        handleMouseUp(e);
       }
     };
 
@@ -131,6 +121,10 @@ export default function SpeechControls({
     });
     micButton.addEventListener("touchend", handleTouchEnd, { passive: false });
     micButton.addEventListener("contextmenu", handleContextMenu);
+
+    // Add global mouseup for cases where the user releases outside the button
+    document.addEventListener("mouseup", handleMouseUp);
+
     return () => {
       micButton.removeEventListener("mousedown", handleMouseDown);
       micButton.removeEventListener("mouseup", handleMouseUp);
@@ -138,6 +132,11 @@ export default function SpeechControls({
       micButton.removeEventListener("touchstart", handleTouchStart);
       micButton.removeEventListener("touchend", handleTouchEnd);
       micButton.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("mouseup", handleMouseUp);
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, [isListening, isProcessing, onStartListening, onStopListening]);
 
@@ -147,7 +146,11 @@ export default function SpeechControls({
         ref={micButtonRef}
         css={speechButtonStyle}
         className={isListening ? "listening" : isProcessing ? "processing" : ""}
-        title={isProcessing ? "Processing speech..." : "Push and hold to talk"}
+        title={
+          isProcessing
+            ? "Processing speech..."
+            : "Press and hold for 1 second to talk"
+        }
         disabled={isProcessing}
         type="button"
       >
@@ -158,11 +161,9 @@ export default function SpeechControls({
               ? "Recording"
               : isProcessing
               ? "Processing"
-              : "Push to talk"
+              : "Press and hold to talk"
           }
-        >
-          {isListening ? "🔴" : isProcessing ? "⏳" : "🎤"}
-        </span>
+        />
       </button>
     </div>
   );

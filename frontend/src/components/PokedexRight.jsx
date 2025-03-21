@@ -19,14 +19,6 @@ const pokedexRightContainerStyle = css`
   }
 `;
 
-const pokedexRightTopStyle = css`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: ${theme.spacing.md};
-  border-bottom: 3px solid ${theme.colors.pokedexDarkRed};
-`;
-
 const screenContainerStyle = css`
   padding: ${theme.spacing.lg};
   background-color: ${theme.colors.pokedexRed};
@@ -37,7 +29,7 @@ const screenContainerStyle = css`
 
 const screenStyle = css`
   background-color: ${theme.colors.screenBg};
-  border-radius: ${theme.borders.radius.md};
+  border-radius: 18px;
   border: 15px solid ${theme.colors.screenBorder};
   height: 320px;
   overflow: hidden;
@@ -195,33 +187,6 @@ const searchButtonStyle = css`
   }
 `;
 
-const listeningIndicatorStyle = css`
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  background-color: ${theme.colors.recordingRed};
-  border-radius: 50%;
-  animation: pulse 1.5s infinite;
-
-  @keyframes pulse {
-    0% {
-      opacity: 0.5;
-      transform: scale(0.8) translateY(-50%);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.2) translateY(-40%);
-    }
-    100% {
-      opacity: 0.5;
-      transform: scale(0.8) translateY(-50%);
-    }
-  }
-`;
-
 const processingIndicatorStyle = css`
   position: absolute;
   right: 10px;
@@ -338,10 +303,7 @@ export default function PokedexRight({
   loading,
   displayRef,
   contentRef,
-  isListening,
   isProcessing,
-  startListening,
-  stopListening,
   transcript,
   speechError,
   crySoundLoaded,
@@ -385,15 +347,6 @@ export default function PokedexRight({
 
   return (
     <div css={pokedexRightContainerStyle}>
-      <div css={pokedexRightTopStyle}>
-        <SpeechControls
-          isListening={isListening}
-          isProcessing={isProcessing}
-          onStartListening={startListening}
-          onStopListening={stopListening}
-        />
-      </div>
-
       <div css={screenContainerStyle}>
         <SectionTabs
           sections={structuredData?.sections}
@@ -412,24 +365,17 @@ export default function PokedexRight({
             <input
               css={inputStyle}
               type="text"
-              value={
-                isListening
-                  ? transcript || "Listening..."
-                  : isProcessing
-                  ? "Processing speech..."
-                  : input
-              }
+              value={isProcessing ? "Processing speech..." : input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 speechError === "microphone_access_error"
                   ? "Microphone access denied - type your query"
                   : "Ask Pokédex... or press and hold 🎤 to speak"
               }
-              disabled={loading || isListening || isProcessing}
+              disabled={loading || isProcessing}
             />
-            {isListening && <div css={listeningIndicatorStyle} />}
             {isProcessing && <div css={processingIndicatorStyle} />}
-            {speechError && !isListening && !isProcessing && (
+            {speechError && !isProcessing && (
               <div
                 css={speechErrorIndicatorStyle}
                 title={`Error: ${speechError}`}

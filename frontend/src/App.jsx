@@ -445,9 +445,9 @@ function App() {
           isSpeaking={isSpeaking}
           onSpeak={speakCurrentSection}
           onStop={stopSpeaking}
+          isProcessing={isProcessing}
           startListening={startListening}
           stopListening={stopListening}
-          isProcessing={isProcessing}
         />
 
         <PokedexRight
@@ -466,7 +466,6 @@ function App() {
           voiceOptions={voiceOptions}
           selectedVoice={selectedVoice}
           setSelectedVoice={setSelectedVoice}
-          isListening={isListening}
           isProcessing={isProcessing}
           startListening={startListening}
           stopListening={stopListening}

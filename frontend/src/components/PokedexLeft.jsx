@@ -4,6 +4,7 @@ import LoadingAnimation from "./LoadingAnimation";
 import PokemonDisplay from "./PokemonDisplay";
 import { getCurrentSprite } from "../utils/spriteUtils";
 import { theme } from "../theme";
+import SpeechControls from "./SpeechControls";
 
 const pokedexLeftContainerStyle = css`
   flex: 1;
@@ -72,7 +73,7 @@ const screenContainerStyle = css`
 
 const screenStyle = css`
   background-color: ${theme.colors.screenBg};
-  border-radius: 10px;
+  border-radius: 18px;
   border: 15px solid ${theme.colors.screenBorder};
   height: 320px;
   overflow: hidden;
@@ -168,7 +169,8 @@ const pokemonNameBannerStyle = css`
   background-color: rgba(0, 0, 0, 0.5);
   color: white;
   width: 100%;
-  padding: 5px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -191,6 +193,11 @@ export default function PokedexLeft({
   loading,
   currentPokemon,
   currentSpriteIndex,
+  isListening,
+  isProcessing,
+  startListening,
+  stopListening,
+  isSpeaking,
 }) {
   const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
   const spriteContainerRef = useRef(null);
@@ -306,13 +313,85 @@ export default function PokedexLeft({
         <div css={controlsStyle}>
           <div
             css={css`
-              background: green;
-              width: 120px;
-              height: 60px;
-              border-radius: 8px;
-              border: 2px solid black;
+              display: flex;
+              flex-direction: column;
+              justify-content: start;
+              height: 80%;
             `}
-          />
+          >
+            <SpeechControls
+              isListening={isListening}
+              isProcessing={isProcessing}
+              onStartListening={startListening}
+              onStopListening={stopListening}
+            />
+          </div>
+
+          <div
+            css={css`
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100%;
+            `}
+          >
+            <div
+              css={css`
+                display: flex;
+                flex-direction: row;
+              `}
+            >
+              <button
+                css={css`
+                  width: 50px;
+                  height: 8px;
+                  border-radius: 4px;
+                  background-color: red;
+                `}
+              />
+              <div
+                css={css`
+                  width: 30px;
+                `}
+              />
+              <button
+                css={css`
+                  width: 50px;
+                  height: 8px;
+                  border-radius: 4px;
+                  background-color: blue;
+                `}
+              />
+            </div>
+            <div
+              css={css`
+                height: 20px;
+              `}
+            />
+            <div
+              css={css`
+                background: ${isListening ? "lightgreen" : "green"};
+                width: 120px;
+                height: 70px;
+                border-radius: 8px;
+                border: 2px solid black;
+                animation: ${isListening ? "blink 1s infinite" : "none"};
+
+                @keyframes blink {
+                  0% {
+                    opacity: 1;
+                  }
+                  50% {
+                    opacity: 0.5;
+                  }
+                  100% {
+                    opacity: 1;
+                  }
+                }
+              `}
+            />
+          </div>
 
           <div css={dPadStyle(isSmallScreen)}>
             <div className="d-pad-row">
