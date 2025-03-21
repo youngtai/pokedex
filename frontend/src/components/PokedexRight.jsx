@@ -1,8 +1,8 @@
 import { css, keyframes } from "@emotion/react";
+import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { theme } from "../theme";
 import SectionTabs from "./SectionTabs";
-import SpeechControls from "./SpeechControls";
 
 const pokedexRightContainerStyle = css`
   flex: 1;
@@ -296,25 +296,36 @@ export default function PokedexRight({
   activeSection,
   handleSectionChange,
   displayText,
-  input,
-  setInput,
-  handleSubmit,
-  formRef,
   loading,
   displayRef,
   contentRef,
   isProcessing,
   transcript,
   speechError,
-  crySoundLoaded,
-  playCry,
-  cycleSprite,
-  currentPokemon,
   isSpeaking,
   onSpeak,
   onStop,
+  stopListening,
+  setLoading,
+  stopSpeaking,
+  handleProcessQuery,
 }) {
-  const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
+  const formRef = useRef(null);
+  const [input, setInput] = useState("");
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+
+    const userQuery = input.trim();
+    if (!userQuery || loading) return;
+
+    setInput("");
+    stopListening();
+    setLoading(true);
+    stopSpeaking();
+
+    await handleProcessQuery(userQuery);
+  };
 
   const renderStructuredContent = () => {
     if (
@@ -386,31 +397,6 @@ export default function PokedexRight({
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", justifyContent: "start" }}>
-              <button
-                css={buttonStyle(isSmallScreen)}
-                onClick={playCry}
-                disabled={!crySoundLoaded || !currentPokemon}
-                title="Play Pokémon cry"
-                style={{ borderRadius: "8px 0 0 8px" }}
-              >
-                <span role="img" aria-label="Sound">
-                  🔊
-                </span>
-              </button>
-              <button
-                css={buttonStyle(isSmallScreen)}
-                onClick={cycleSprite}
-                disabled={!currentPokemon}
-                title="Change sprite view"
-                style={{ borderRadius: "0 8px 8px 0" }}
-              >
-                <span role="img" aria-label="Image">
-                  🔄
-                </span>
-              </button>
-            </div>
-
             <button
               onClick={isSpeaking ? onStop : onSpeak}
               css={[speechButtonStyle, isSpeaking && css`&.speaking`]}

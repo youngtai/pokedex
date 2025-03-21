@@ -1,47 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useState } from "react";
 
 export default function useSpeechSynthesis() {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceOptions, setVoiceOptions] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState(null);
   const speechSynthRef = useRef(null);
-
-  // Set up speech synthesis when component mounts
-  useEffect(() => {
-    if (!window.speechSynthesis) return;
-
-    // Function to get and set voices
-    const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      if (availableVoices.length > 0) {
-        setVoiceOptions(availableVoices);
-
-        // Try to select a good default voice
-        // Prefer en-US voices, then any English voice
-        const usVoice = availableVoices.find(
-          (voice) => voice.lang === "en-US" && !voice.name.includes("Google")
-        );
-        const enVoice = availableVoices.find(
-          (voice) =>
-            voice.lang.startsWith("en") && !voice.name.includes("Google")
-        );
-        const defaultVoice = usVoice || enVoice || availableVoices[0];
-
-        setSelectedVoice(defaultVoice);
-      }
-    };
-
-    // Initial load
-    loadVoices();
-
-    // Chrome loads voices asynchronously, so we need this event
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-      window.speechSynthesis.cancel();
-    };
-  }, []);
 
   // Function to read text aloud with enhanced quality
   const speakText = (text) => {
@@ -67,11 +28,6 @@ export default function useSpeechSynthesis() {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
-    // Use the selected voice if available
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
     // Configure better speech parameters
     utterance.rate = 1.0; // Speed of speech (0.1 to 10)
     utterance.pitch = 1.0; // Pitch (0 to 2)
@@ -90,7 +46,6 @@ export default function useSpeechSynthesis() {
         // Speak each chunk when we reach max length or at the end
         if (currentText.length > maxLength || index === sentences.length - 1) {
           const chunkUtterance = new SpeechSynthesisUtterance(currentText);
-          if (selectedVoice) chunkUtterance.voice = selectedVoice;
           chunkUtterance.rate = utterance.rate;
           chunkUtterance.pitch = utterance.pitch;
           chunkUtterance.volume = utterance.volume;
@@ -137,9 +92,6 @@ export default function useSpeechSynthesis() {
 
   return {
     isSpeaking,
-    voiceOptions,
-    selectedVoice,
-    setSelectedVoice,
     speakText,
     stopSpeaking,
   };

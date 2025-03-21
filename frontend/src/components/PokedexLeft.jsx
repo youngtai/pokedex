@@ -1,9 +1,10 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
 import { css } from "@emotion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import usePokemonCry from "../hooks/usePokemonCry";
+import { theme } from "../theme";
+import { getCurrentSprite } from "../utils/spriteUtils";
 import LoadingAnimation from "./LoadingAnimation";
 import PokemonDisplay from "./PokemonDisplay";
-import { getCurrentSprite } from "../utils/spriteUtils";
-import { theme } from "../theme";
 import SpeechControls from "./SpeechControls";
 
 const pokedexLeftContainerStyle = css`
@@ -23,7 +24,7 @@ const topSectionStyle = css`
   border-bottom: 3px solid ${theme.colors.pokedexDarkRed};
 `;
 
-const lightStyle = (color, size, isSmall) => css`
+const lightStyle = (color, size, isSmall, isBlinking) => css`
   position: relative;
   border-radius: 50%;
   width: ${isSmall ? size.small : size.large}px;
@@ -35,6 +36,7 @@ const lightStyle = (color, size, isSmall) => css`
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3),
       inset 0 0 10px rgba(255, 255, 255, 0.5);
     margin-right: auto;
+    animation: ${isBlinking ? "blueLightBlink 0.8s infinite" : "none"};
     &::after {
       content: "";
       position: absolute;
@@ -44,6 +46,21 @@ const lightStyle = (color, size, isSmall) => css`
       border-radius: 50%;
       top: 5px;
       left: 5px;
+    }
+    
+    @keyframes blueLightBlink {
+      0% {
+        opacity: 1;
+        background-color: ${theme.colors.pokedexBlue};
+      }
+      50% {
+        opacity: 1;
+        background-color:rgb(143, 210, 255);
+      }
+      100% {
+        opacity: 1;
+        background-color: ${theme.colors.pokedexBlue};
+      }
     }
   `}
   ${color !== "pokedexBlue" &&
@@ -194,16 +211,22 @@ export default function PokedexLeft({
   currentPokemon,
   currentSpriteIndex,
   isListening,
+  isSpeaking,
   isProcessing,
   startListening,
   stopListening,
-  isSpeaking,
+  cycleSprite,
 }) {
   const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
   const spriteContainerRef = useRef(null);
   const spriteRef = useRef(null);
   const [spriteScale, setSpriteScale] = useState(1);
   const [spriteOpacity, setSpriteOpacity] = useState(0);
+
+  const { crySoundLoaded, playCry } = usePokemonCry(
+    currentPokemon?.cry_url,
+    currentPokemon?.cry_url_backup
+  );
 
   const calculateSpriteScale = useCallback(() => {
     if (spriteContainerRef.current && spriteRef.current) {
@@ -247,7 +270,8 @@ export default function PokedexLeft({
           css={lightStyle(
             "pokedexBlue",
             { small: 40, large: 60 },
-            isSmallScreen
+            isSmallScreen,
+            isSpeaking
           )}
         />
         <div
@@ -362,6 +386,9 @@ export default function PokedexLeft({
                   border-radius: 4px;
                   background-color: blue;
                 `}
+                onClick={playCry}
+                disabled={!crySoundLoaded || !currentPokemon}
+                title="Play Pokémon cry"
               />
             </div>
             <div
@@ -398,9 +425,19 @@ export default function PokedexLeft({
               <div className="d-pad-btn up"></div>
             </div>
             <div className="d-pad-row">
-              <div className="d-pad-btn left"></div>
+              <button
+                className="d-pad-btn left"
+                onClick={() => cycleSprite("left")}
+                disabled={!currentPokemon}
+                title="Cycle Pokémon sprite"
+              />
               <div className="d-pad-btn center"></div>
-              <div className="d-pad-btn right"></div>
+              <button
+                className="d-pad-btn right"
+                onClick={() => cycleSprite("right")}
+                disabled={!currentPokemon}
+                title="Cycle Pokémon sprite"
+              />
             </div>
             <div className="d-pad-row">
               <div className="d-pad-btn down"></div>

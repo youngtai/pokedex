@@ -1,8 +1,7 @@
-import { Global, css, ThemeProvider } from "@emotion/react";
+import { css, Global, ThemeProvider } from "@emotion/react";
 import { useEffect, useRef, useState } from "react";
 import PokedexLeft from "./components/PokedexLeft";
 import PokedexRight from "./components/PokedexRight";
-import usePokemonCry from "./hooks/usePokemonCry";
 import useSpeechRecognition from "./hooks/useSpeechRecognition";
 import useSpeechSynthesis from "./hooks/useSpeechSynthesis";
 import { theme } from "./theme";
@@ -175,7 +174,7 @@ const globalStyles = css`
 `;
 function App() {
   const [displayText, setDisplayText] = useState("");
-  const [input, setInput] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [currentPokemon, setCurrentPokemon] = useState(null);
@@ -186,21 +185,8 @@ function App() {
   const displayRef = useRef(null);
   const contentRef = useRef(null);
   const isMounted = useRef(true);
-  const formRef = useRef(null);
 
-  const {
-    isSpeaking,
-    voiceOptions,
-    selectedVoice,
-    setSelectedVoice,
-    speakText,
-    stopSpeaking,
-  } = useSpeechSynthesis();
-
-  const { crySoundLoaded, playCry } = usePokemonCry(
-    currentPokemon?.cry_url,
-    currentPokemon?.cry_url_backup
-  );
+  const { isSpeaking, speakText, stopSpeaking } = useSpeechSynthesis();
 
   const handleProcessQuery = async (userQuery) => {
     try {
@@ -253,20 +239,6 @@ function App() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-
-    const userQuery = input.trim();
-    if (!userQuery || loading) return;
-
-    setInput("");
-    stopListening();
-    setLoading(true);
-    stopSpeaking();
-
-    await handleProcessQuery(userQuery);
-  };
-
   const {
     transcript,
     isListening,
@@ -310,25 +282,18 @@ function App() {
     );
   }, []);
 
-  const cycleSprite = () => {
+  const cycleSprite = (direction) => {
     if (!currentPokemon) return;
 
     const spriteKeys = getAvailableSpriteKeys(currentPokemon);
 
     if (spriteKeys.length === 0) return;
 
-    const nextIndex = (currentSpriteIndex + 1) % spriteKeys.length;
+    const indexChange = direction === "left" ? -1 : 1;
+    let nextIndex = (currentSpriteIndex + indexChange) % spriteKeys.length;
+    if (nextIndex < 0) nextIndex += spriteKeys.length;
+
     setCurrentSpriteIndex(nextIndex);
-  };
-
-  const selectSectionText = () => {
-    if (!contentRef.current) return;
-
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(contentRef.current);
-    selection.removeAllRanges();
-    selection.addRange(range);
   };
 
   const speakCurrentSection = () => {
@@ -441,11 +406,10 @@ function App() {
           currentSpriteIndex={currentSpriteIndex}
           isListening={isListening}
           isSpeaking={isSpeaking}
-          onSpeak={speakCurrentSection}
-          onStop={stopSpeaking}
           isProcessing={isProcessing}
           startListening={startListening}
           stopListening={stopListening}
+          cycleSprite={cycleSprite}
         />
 
         <PokedexRight
@@ -453,28 +417,19 @@ function App() {
           activeSection={activeSection}
           handleSectionChange={handleSectionChange}
           displayText={displayText}
-          input={input}
-          setInput={setInput}
-          handleSubmit={handleSubmit}
-          formRef={formRef}
           loading={loading || isProcessing}
           displayRef={displayRef}
           contentRef={contentRef}
-          selectSectionText={selectSectionText}
-          voiceOptions={voiceOptions}
-          selectedVoice={selectedVoice}
-          setSelectedVoice={setSelectedVoice}
           isProcessing={isProcessing}
-          startListening={startListening}
-          stopListening={stopListening}
           transcript={transcript}
           speechError={speechError}
-          crySoundLoaded={crySoundLoaded}
-          playCry={playCry}
-          cycleSprite={cycleSprite}
-          currentPokemon={currentPokemon}
+          isSpeaking={isSpeaking}
           onSpeak={speakCurrentSection}
           onStop={stopSpeaking}
+          stopListening={stopListening}
+          setLoading={setLoading}
+          stopSpeaking={stopSpeaking}
+          handleProcessQuery={handleProcessQuery}
         />
       </div>
     </ThemeProvider>

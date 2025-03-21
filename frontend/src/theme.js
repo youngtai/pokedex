@@ -4,7 +4,7 @@ export const theme = {
     pokedexDarkRed: '#9c0000',
     pokedexLightRed: '#ff0000',
     pokedexBlack: '#222224',
-    pokedexBlue: '#3298cb',
+    pokedexBlue: '#2d88b6',
     pokedexGreen: '#44cc77',
     screenBg: '#9fdf9f',
     screenDark: '#8bca8b',
