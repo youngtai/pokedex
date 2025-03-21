@@ -1,7 +1,9 @@
 import asyncio
+import base64
 import json
 import logging
 import os
+import re
 from contextlib import AsyncExitStack
 from functools import partial
 from typing import Annotated, Any, Dict, Optional
@@ -407,12 +409,7 @@ async def analyze_image(
 
         logger.info(f"Image data size: {len(image_data)} bytes")
 
-        # Convert the image to base64 for use with Claude Vision
-        import base64
-
         base64_image = base64.b64encode(image_data).decode("utf-8")
-
-        # First, use Anthropic's Claude to identify if there's a Pokémon in the image
         identification_prompt = """
         You're a Pokémon expert. Look at this image and identify if there's a Pokémon in it. 
         
@@ -435,22 +432,16 @@ async def analyze_image(
 
         try:
             identification_response = await asyncio.to_thread(
-                lambda: mcp_client.anthropic.messages.create(
-                    model="claude-3-haiku-20240307",
-                    max_tokens=1000,
-                    temperature=0,
-                    messages=[
+                lambda: mcp_client.openai.responses.create(
+                    model="gpt-4o-mini",
+                    input=[
                         {
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": identification_prompt},
+                                {"type": "input_text", "text": identification_prompt},
                                 {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": data.content_type or "image/jpeg",
-                                        "data": base64_image,
-                                    },
+                                    "type": "input_image",
+                                    "image_url": f"data:image/jpeg;base64,{base64_image}",
                                 },
                             ],
                         }
@@ -458,33 +449,29 @@ async def analyze_image(
                 )
             )
 
-            # Extract JSON from the response
-            import re
-            import json
-
             # Find JSON in the response
             json_match = re.search(
-                r"({.*})", identification_response.content[0].text, re.DOTALL
+                r"({.*})", identification_response.output_text, re.DOTALL
             )
             if not json_match:
-                logger.error("No JSON found in Claude identification response")
+                logger.error("No JSON found in GPT-4o-mini identification response")
                 return Response(
                     content={"error": "Could not parse image analysis results"},
                     status_code=500,
                     media_type=MediaType.JSON,
                 )
 
-            claude_result = json.loads(json_match.group(1))
+            image_id_result = json.loads(json_match.group(1))
 
             # If a Pokémon was identified, get its data
             pokemon_data = None
             structured_response = None
 
-            if claude_result.get("pokemon_identified") and claude_result.get(
+            if image_id_result.get("pokemon_identified") and image_id_result.get(
                 "pokemon_name"
             ):
                 # Clean up the pokemon name (lowercase, remove spaces)
-                pokemon_name = claude_result["pokemon_name"].lower().replace(" ", "-")
+                pokemon_name = image_id_result["pokemon_name"].lower().replace(" ", "-")
                 try:
                     # Get Pokémon data using the existing MCP tool
                     session = await mcp_client.get_session()
@@ -534,7 +521,7 @@ Structure your response as a JSON object with the following sections:
 Format the content of each section in Markdown. If a section doesn't have relevant information, you can omit it.
 Respond with ONLY valid JSON that follows this structure - do not include any explanatory text outside the JSON."""
 
-                        assistant_message = f"""I've identified a {pokemon_data["name"]} in a photo with {claude_result["confidence"]} confidence.
+                        assistant_message = f"""I've identified a {pokemon_data["name"]} in a photo with {image_id_result["confidence"]} confidence.
 Here's the Pokémon's data:
 
 {json.dumps(pokemon_data, indent=2)}
@@ -574,7 +561,7 @@ Generate a structured Pokédex response about this Pokémon."""
                             "sections": [
                                 {
                                     "title": "Error Processing",
-                                    "content": f"I identified a {claude_result['pokemon_name']} but encountered an error while processing its data: {str(e)}",
+                                    "content": f"I identified a {image_id_result['pokemon_name']} but encountered an error while processing its data: {str(e)}",
                                 }
                             ]
                         }
@@ -584,7 +571,7 @@ Generate a structured Pokédex response about this Pokémon."""
                         "sections": [
                             {
                                 "title": "Data Retrieval Error",
-                                "content": f"I identified a {claude_result['pokemon_name']} but couldn't retrieve its data: {str(e)}",
+                                "content": f"I identified a {image_id_result['pokemon_name']} but couldn't retrieve its data: {str(e)}",
                             }
                         ]
                     }
@@ -601,7 +588,7 @@ Generate a structured Pokédex response about this Pokémon."""
 
             # Build the response with all the data we've collected
             analysis_result = {
-                "identification": claude_result,
+                "identification": image_id_result,
                 "pokemon_data": pokemon_data,
                 "structured_data": structured_response,
                 "raw_markdown": convert_structured_to_markdown(structured_response)
