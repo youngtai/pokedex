@@ -167,6 +167,7 @@ const searchButtonStyle = css`
   font-family: ${theme.fonts.pixel};
   font-size: 14px;
   transition: all 0.2s;
+  width: 45%;
 
   &:hover:not(:disabled) {
     background-color: #333;
@@ -208,39 +209,6 @@ const speechErrorIndicatorStyle = css`
   font-size: 18px;
 `;
 
-const buttonStyle = (small) => css`
-  background: lightgray;
-  color: white;
-  border: 2px solid black;
-  width: ${small ? "40px" : "50px"};
-  height: ${small ? "30px" : "40px"};
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover:not(:disabled) {
-    transform: scale(1.05);
-    background: #333;
-  }
-
-  &:active:not(:disabled) {
-    transform: scale(0.95);
-    background: #111;
-  }
-
-  &:disabled {
-    background: lightgray;
-    cursor: not-allowed;
-  }
-
-  span {
-    font-size: 1.5rem;
-  }
-`;
-
 const pulseRecording = keyframes`
   0% {
     box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
@@ -253,23 +221,17 @@ const pulseRecording = keyframes`
   }
 `;
 
-const speechButtonStyle = css`
+const readButtonStyle = css`
+  padding: 10px;
   background-color: ${theme.colors.pokedexBlack};
   color: white;
   border: none;
+  border-radius: ${theme.borders.radius.sm};
   cursor: pointer;
-  font-size: 1.2rem;
-  padding: 5px;
-  border-radius: 10%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  touch-action: none;
-  transition: transform 0.1s, background-color 0.2s;
   font-family: ${theme.fonts.pixel};
   font-size: 14px;
-  padding: 10px;
+  transition: all 0.2s;
+  width: 45%;
 
   &:active:not(:disabled) {
     transform: scale(0.95);
@@ -289,6 +251,10 @@ const speechButtonStyle = css`
     background-color: ${theme.colors.pokedexYellow};
     cursor: wait;
   }
+
+  &.paused {
+    background-color: ${theme.colors.pokedexYellow};
+  }
 `;
 
 export default function PokedexRight({
@@ -300,7 +266,6 @@ export default function PokedexRight({
   displayRef,
   contentRef,
   isProcessing,
-  transcript,
   speechError,
   isSpeaking,
   onSpeak,
@@ -309,6 +274,8 @@ export default function PokedexRight({
   setLoading,
   stopSpeaking,
   handleProcessQuery,
+  isPaused,
+  onResume,
 }) {
   const formRef = useRef(null);
   const [input, setInput] = useState("");
@@ -398,26 +365,44 @@ export default function PokedexRight({
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <button
-              onClick={isSpeaking ? onStop : onSpeak}
-              css={[speechButtonStyle, isSpeaking && css`&.speaking`]}
-              title={isSpeaking ? "Stop reading" : "Read aloud"}
-              disabled={isProcessing}
+              onClick={isSpeaking ? (isPaused ? onResume : onStop) : onSpeak}
+              css={[
+                readButtonStyle,
+                isSpeaking && !isPaused && css`&.speaking`,
+                isPaused && css`&.paused`,
+              ]}
+              title={
+                isPaused
+                  ? "Resume reading"
+                  : isSpeaking
+                  ? "Stop reading"
+                  : "Read aloud"
+              }
+              disabled={
+                isProcessing ||
+                loading ||
+                (!displayText && (!structuredData || !structuredData.sections))
+              }
               type="button"
             >
               <span
                 role="img"
-                aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
+                aria-label={
+                  isPaused
+                    ? "Resume reading"
+                    : isSpeaking
+                    ? "Stop reading"
+                    : "Read aloud"
+                }
               >
-                READ
+                {isPaused ? "RESUME" : isSpeaking ? "STOP" : "READ"}
               </span>
             </button>
 
             <button
               css={searchButtonStyle}
               type="submit"
-              disabled={
-                loading || isProcessing || (!input.trim() && !transcript.trim())
-              }
+              disabled={loading || isProcessing || !input.trim()}
             >
               SEARCH
             </button>

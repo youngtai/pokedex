@@ -186,7 +186,8 @@ function App() {
   const contentRef = useRef(null);
   const isMounted = useRef(true);
 
-  const { isSpeaking, speakText, stopSpeaking } = useSpeechSynthesis();
+  const { isSpeaking, isPaused, speakText, stopSpeaking, toggleSpeaking } =
+    useSpeechSynthesis();
 
   const handleProcessQuery = async (userQuery) => {
     try {
@@ -430,6 +431,8 @@ function App() {
           setLoading={setLoading}
           stopSpeaking={stopSpeaking}
           handleProcessQuery={handleProcessQuery}
+          isPaused={isPaused}
+          onResume={toggleSpeaking}
         />
       </div>
     </ThemeProvider>

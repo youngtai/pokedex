@@ -1,98 +1,114 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function useSpeechSynthesis() {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const speechSynthRef = useRef(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const textToSpeakRef = useRef("");
+  const utterancesRef = useRef([]);
+  const currentPositionRef = useRef(0);
 
-  // Function to read text aloud with enhanced quality
-  const speakText = (text) => {
-    // Check if speech synthesis is available
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const cleanTextForSpeech = (text) => {
+    return text
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/#/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\n\n/g, ". ")
+      .replace(/\n/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  const speakSegment = (text, position = 0) => {
     if (!window.speechSynthesis) {
       console.error("Speech synthesis not supported in this browser");
       return;
     }
-
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
-    // Clean up the text for better speech synthesis
-    const cleanText = text
-      .replace(/\*\*/g, "") // Remove bold markdown
-      .replace(/\*/g, "") // Remove italic markdown
-      .replace(/#/g, "") // Remove heading markdown
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Replace markdown links with just the text
-      .replace(/\n\n/g, ". ") // Replace double newlines with periods for better pausing
-      .replace(/\n/g, " ") // Replace single newlines with spaces
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim();
+    if (!text || position >= text.length) {
+      setIsSpeaking(false);
+      setIsPaused(false);
+      currentPositionRef.current = 0;
+      return;
+    }
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const remainingText = text.substring(position);
 
-    // Configure better speech parameters
-    utterance.rate = 1.0; // Speed of speech (0.1 to 10)
-    utterance.pitch = 1.0; // Pitch (0 to 2)
-    utterance.volume = 1.0; // Volume (0 to 1)
+    const utterance = new SpeechSynthesisUtterance(remainingText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
-    // Split long text to prevent cutting off (Chrome limitation)
-    const maxLength = 200;
-    if (cleanText.length > maxLength) {
-      // Split text at sentence boundaries
-      const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-      let currentText = "";
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setIsPaused(false);
+    };
 
-      sentences.forEach((sentence, index) => {
-        currentText += sentence;
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+      currentPositionRef.current = 0;
+    };
 
-        // Speak each chunk when we reach max length or at the end
-        if (currentText.length > maxLength || index === sentences.length - 1) {
-          const chunkUtterance = new SpeechSynthesisUtterance(currentText);
-          chunkUtterance.rate = utterance.rate;
-          chunkUtterance.pitch = utterance.pitch;
-          chunkUtterance.volume = utterance.volume;
+    utterance.onerror = (event) => {
+      console.error("Speech synthesis error:", event);
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
 
-          if (index === 0) {
-            chunkUtterance.onstart = () => setIsSpeaking(true);
-          }
+    utterancesRef.current = [utterance];
+    window.speechSynthesis.speak(utterance);
+  };
 
-          if (index === sentences.length - 1) {
-            chunkUtterance.onend = () => setIsSpeaking(false);
-          }
+  const speakText = (text) => {
+    const cleanText = cleanTextForSpeech(text);
+    textToSpeakRef.current = cleanText;
+    currentPositionRef.current = 0;
 
-          window.speechSynthesis.speak(chunkUtterance);
-          currentText = "";
-        }
-      });
-    } else {
-      // For shorter text, just use the original utterance
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-      };
+    speakSegment(cleanText, 0);
+  };
 
-      utterance.onend = () => {
-        setIsSpeaking(false);
-      };
+  const toggleSpeaking = () => {
+    if (!window.speechSynthesis) return;
 
-      utterance.onerror = (event) => {
-        console.error("Speech synthesis error:", event);
-        setIsSpeaking(false);
-      };
+    if (isSpeaking && !isPaused) {
+      window.speechSynthesis.cancel();
+      setIsPaused(true);
+      setIsSpeaking(false);
 
-      speechSynthRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      currentPositionRef.current = Math.floor(
+        textToSpeakRef.current.length / 2
+      );
+    } else if (isPaused) {
+      speakSegment(textToSpeakRef.current, currentPositionRef.current);
     }
   };
 
-  // Function to stop reading
   const stopSpeaking = () => {
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
+      utterancesRef.current = [];
+      textToSpeakRef.current = "";
+      currentPositionRef.current = 0;
       setIsSpeaking(false);
+      setIsPaused(false);
     }
   };
 
   return {
-    isSpeaking,
+    isSpeaking: isSpeaking || isPaused,
+    isPaused,
     speakText,
     stopSpeaking,
+    toggleSpeaking,
   };
 }
