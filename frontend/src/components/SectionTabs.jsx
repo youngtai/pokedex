@@ -1,8 +1,8 @@
 import React from "react";
-import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { theme } from "../theme";
 
-const TabsContainer = styled.div`
+const tabsContainerStyle = css`
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
@@ -10,7 +10,7 @@ const TabsContainer = styled.div`
   padding: 0 5px;
 `;
 
-const TabButton = styled.button`
+const tabButtonStyle = css`
   background-color: #ddd;
   border: 1px solid #999;
   border-radius: 5px 5px 0 0;
@@ -43,16 +43,17 @@ export default function SectionTabs({
   if (!sections || sections.length <= 1) return null;
 
   return (
-    <TabsContainer>
+    <div css={tabsContainerStyle}>
       {sections.map((section, index) => (
-        <TabButton
+        <button
           key={`section-${index}`}
+          css={tabButtonStyle}
           className={activeSection === index ? "active" : ""}
           onClick={() => handleSectionChange(index)}
         >
           {section.title || `Section ${index + 1}`}
-        </TabButton>
+        </button>
       ))}
-    </TabsContainer>
+    </div>
   );
 }

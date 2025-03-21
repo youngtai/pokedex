@@ -204,6 +204,7 @@ Respond in Markdown format with appropriate headers for each section.
 
 Format the content of each section in Markdown. If a section doesn't have relevant information, you can omit it. For multiple Pokémon, add a separate object for each in an array.
 Do not make up information or Pokémon that don't exist. If you don't know the answer, leave the section out.
+If a user asks about nidoran without specifying gender, default to nidoran-m.
 Respond with ONLY valid JSON that follows this structure - do not include any explanatory text outside the JSON.""",
                     }
                 )

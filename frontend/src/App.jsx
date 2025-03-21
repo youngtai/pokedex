@@ -1,5 +1,4 @@
 import { Global, css, ThemeProvider } from "@emotion/react";
-import styled from "@emotion/styled";
 import { useEffect, useRef, useState } from "react";
 import PokedexLeft from "./components/PokedexLeft";
 import PokedexRight from "./components/PokedexRight";
@@ -9,8 +8,7 @@ import useSpeechSynthesis from "./hooks/useSpeechSynthesis";
 import { theme } from "./theme";
 import { getAvailableSpriteKeys } from "./utils/spriteUtils";
 
-// Main Pokedex container
-const PokedexContainer = styled.div`
+const pokedexContainerStyle = css`
   display: flex;
   width: 100%;
   max-width: 1000px;
@@ -25,14 +23,14 @@ const PokedexContainer = styled.div`
     bottom: 25%;
     left: 50%;
     width: 15px;
-    background-color: ${(props) => props.theme.colors.pokedexDarkRed};
+    background-color: ${theme.colors.pokedexDarkRed};
     transform: translateX(-50%);
     border-left: 2px solid rgba(0, 0, 0, 0.2);
     border-right: 2px solid rgba(0, 0, 0, 0.2);
     z-index: 0;
   }
 
-  @media (max-width: ${(props) => props.theme.breakpoints.tablet}) {
+  @media (max-width: ${theme.breakpoints.tablet}) {
     flex-direction: column;
 
     &::after {
@@ -41,6 +39,140 @@ const PokedexContainer = styled.div`
   }
 `;
 
+const globalStyles = css`
+  @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Roboto", sans-serif;
+    background-color: #1f1f1f;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  @keyframes pulse {
+    0% {
+      opacity: 0.5;
+      transform: scale(0.8) translateY(-50%);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2) translateY(-40%);
+    }
+    100% {
+      opacity: 0.5;
+      transform: scale(0.8) translateY(-50%);
+    }
+  }
+
+  .push-to-talk {
+    background-color: rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  .push-to-talk:active,
+  .push-to-talk.listening {
+    background-color: rgba(255, 0, 0, 0.5);
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
+  }
+
+  .push-to-talk.listening {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+    }
+    70% {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+    }
+    100% {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+    }
+  }
+
+  .type-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    margin: 2px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: white;
+  }
+
+  .type-normal {
+    background-color: ${theme.typeColors.normal};
+  }
+  .type-fire {
+    background-color: ${theme.typeColors.fire};
+  }
+  .type-water {
+    background-color: ${theme.typeColors.water};
+  }
+  .type-grass {
+    background-color: ${theme.typeColors.grass};
+  }
+  .type-electric {
+    background-color: ${theme.typeColors.electric};
+  }
+  .type-ice {
+    background-color: ${theme.typeColors.ice};
+  }
+  .type-fighting {
+    background-color: ${theme.typeColors.fighting};
+  }
+  .type-poison {
+    background-color: ${theme.typeColors.poison};
+  }
+  .type-ground {
+    background-color: ${theme.typeColors.ground};
+  }
+  .type-flying {
+    background-color: ${theme.typeColors.flying};
+  }
+  .type-psychic {
+    background-color: ${theme.typeColors.psychic};
+  }
+  .type-bug {
+    background-color: ${theme.typeColors.bug};
+  }
+  .type-rock {
+    background-color: ${theme.typeColors.rock};
+  }
+  .type-ghost {
+    background-color: ${theme.typeColors.ghost};
+  }
+  .type-dark {
+    background-color: ${theme.typeColors.dark};
+  }
+  .type-dragon {
+    background-color: ${theme.typeColors.dragon};
+  }
+  .type-steel {
+    background-color: ${theme.typeColors.steel};
+  }
+  .type-fairy {
+    background-color: ${theme.typeColors.fairy};
+  }
+`;
 function App() {
   const [displayText, setDisplayText] = useState("");
   const [input, setInput] = useState("");
@@ -303,143 +435,8 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Global
-        styles={css`
-          @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
-
-          * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-          }
-
-          body {
-            margin: 0;
-            font-family: "Roboto", sans-serif;
-            background-color: #1f1f1f;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-          }
-
-          @keyframes pulse {
-            0% {
-              opacity: 0.5;
-              transform: scale(0.8) translateY(-50%);
-            }
-            50% {
-              opacity: 1;
-              transform: scale(1.2) translateY(-40%);
-            }
-            100% {
-              opacity: 0.5;
-              transform: scale(0.8) translateY(-50%);
-            }
-          }
-
-          .push-to-talk {
-            background-color: rgba(255, 255, 255, 0.3);
-            transition: all 0.2s ease;
-            user-select: none;
-            touch-action: manipulation;
-          }
-
-          .push-to-talk:active,
-          .push-to-talk.listening {
-            background-color: rgba(255, 0, 0, 0.5);
-            transform: scale(1.1);
-            box-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
-          }
-
-          .push-to-talk.listening {
-            animation: pulse 1.5s infinite;
-          }
-
-          @keyframes pulse {
-            0% {
-              transform: scale(1.1);
-              box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
-            }
-            70% {
-              transform: scale(1.15);
-              box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
-            }
-            100% {
-              transform: scale(1.1);
-              box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-            }
-          }
-
-          .type-tag {
-            display: inline-block;
-            padding: 3px 8px;
-            margin: 2px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: white;
-          }
-
-          .type-normal {
-            background-color: ${theme.typeColors.normal};
-          }
-          .type-fire {
-            background-color: ${theme.typeColors.fire};
-          }
-          .type-water {
-            background-color: ${theme.typeColors.water};
-          }
-          .type-grass {
-            background-color: ${theme.typeColors.grass};
-          }
-          .type-electric {
-            background-color: ${theme.typeColors.electric};
-          }
-          .type-ice {
-            background-color: ${theme.typeColors.ice};
-          }
-          .type-fighting {
-            background-color: ${theme.typeColors.fighting};
-          }
-          .type-poison {
-            background-color: ${theme.typeColors.poison};
-          }
-          .type-ground {
-            background-color: ${theme.typeColors.ground};
-          }
-          .type-flying {
-            background-color: ${theme.typeColors.flying};
-          }
-          .type-psychic {
-            background-color: ${theme.typeColors.psychic};
-          }
-          .type-bug {
-            background-color: ${theme.typeColors.bug};
-          }
-          .type-rock {
-            background-color: ${theme.typeColors.rock};
-          }
-          .type-ghost {
-            background-color: ${theme.typeColors.ghost};
-          }
-          .type-dark {
-            background-color: ${theme.typeColors.dark};
-          }
-          .type-dragon {
-            background-color: ${theme.typeColors.dragon};
-          }
-          .type-steel {
-            background-color: ${theme.typeColors.steel};
-          }
-          .type-fairy {
-            background-color: ${theme.typeColors.fairy};
-          }
-        `}
-      />
-      <PokedexContainer>
+      <Global styles={globalStyles} />
+      <div css={pokedexContainerStyle}>
         <PokedexLeft
           loading={loading}
           currentPokemon={currentPokemon}
@@ -482,7 +479,7 @@ function App() {
           onSpeak={speakCurrentSection}
           onStop={stopSpeaking}
         />
-      </PokedexContainer>
+      </div>
     </ThemeProvider>
   );
 }

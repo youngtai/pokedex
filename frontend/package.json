@@ -7,17 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "preinstall": "npx only-allow pnpm",
     "preview": "vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
     "howler": "^2.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
+    "@emotion/babel-plugin": "^11.13.5",
     "@eslint/js": "^9.21.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

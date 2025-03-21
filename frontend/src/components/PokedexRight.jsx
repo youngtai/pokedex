@@ -1,12 +1,10 @@
-/** @jsxImportSource @emotion/react */
 import { css, keyframes } from "@emotion/react";
-import styled from "@emotion/styled";
 import ReactMarkdown from "react-markdown";
 import { theme } from "../theme";
 import SectionTabs from "./SectionTabs";
 import SpeechControls from "./SpeechControls";
 
-const PokedexRightContainer = styled.div`
+const pokedexRightContainerStyle = css`
   flex: 1;
   background-color: ${theme.colors.pokedexRed};
   border-radius: 5px 15px 15px 5px;
@@ -21,7 +19,7 @@ const PokedexRightContainer = styled.div`
   }
 `;
 
-const PokedexRightTop = styled.div`
+const pokedexRightTopStyle = css`
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -29,7 +27,7 @@ const PokedexRightTop = styled.div`
   border-bottom: 3px solid ${theme.colors.pokedexDarkRed};
 `;
 
-const ScreenContainer = styled.div`
+const screenContainerStyle = css`
   padding: ${theme.spacing.lg};
   background-color: ${theme.colors.pokedexRed};
   display: flex;
@@ -37,7 +35,7 @@ const ScreenContainer = styled.div`
   height: calc(100% - 93px);
 `;
 
-const Screen = styled.div`
+const screenStyle = css`
   background-color: ${theme.colors.screenBg};
   border-radius: ${theme.borders.radius.md};
   border: 15px solid ${theme.colors.screenBorder};
@@ -54,7 +52,7 @@ const Screen = styled.div`
   }
 `;
 
-const ScreenContent = styled.div`
+const screenContentStyle = css`
   padding: ${theme.spacing.md};
   font-family: ${theme.fonts.mono};
   font-size: 16px;
@@ -125,7 +123,7 @@ const ScreenContent = styled.div`
   }
 `;
 
-const StructuredContent = styled.div`
+const structuredContentStyle = css`
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -140,18 +138,18 @@ const StructuredContent = styled.div`
   }
 `;
 
-const InputArea = styled.form`
+const inputAreaStyle = css`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.md};
 `;
 
-const InputWithStatus = styled.div`
+const inputWithStatusStyle = css`
   position: relative;
   width: 100%;
 `;
 
-const Input = styled.input`
+const inputStyle = css`
   width: 100%;
   padding: 10px;
   border: 3px solid ${theme.colors.pokedexBlack};
@@ -167,7 +165,7 @@ const Input = styled.input`
   }
 `;
 
-const SearchButton = styled.button`
+const searchButtonStyle = css`
   padding: 10px;
   background-color: ${theme.colors.pokedexBlack};
   color: white;
@@ -197,7 +195,7 @@ const SearchButton = styled.button`
   }
 `;
 
-const ListeningIndicator = styled.div`
+const listeningIndicatorStyle = css`
   position: absolute;
   right: 10px;
   top: 50%;
@@ -224,7 +222,7 @@ const ListeningIndicator = styled.div`
   }
 `;
 
-const ProcessingIndicator = styled.div`
+const processingIndicatorStyle = css`
   position: absolute;
   right: 10px;
   top: 50%;
@@ -236,7 +234,7 @@ const ProcessingIndicator = styled.div`
   animation: pulse 1.5s infinite ease-in-out;
 `;
 
-const SpeechErrorIndicator = styled.div`
+const speechErrorIndicatorStyle = css`
   position: absolute;
   right: 10px;
   top: 50%;
@@ -245,12 +243,12 @@ const SpeechErrorIndicator = styled.div`
   font-size: 18px;
 `;
 
-const Button = styled.button`
+const buttonStyle = (small) => css`
   background: lightgray;
   color: white;
   border: 2px solid black;
-  width: ${({ small }) => (small ? "40px" : "50px")};
-  height: ${({ small }) => (small ? "30px" : "40px")};
+  width: ${small ? "40px" : "50px"};
+  height: ${small ? "30px" : "40px"};
   font-size: 1.2rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -376,42 +374,43 @@ export default function PokedexRight({
     }
 
     return (
-      <StructuredContent>
+      <div css={structuredContentStyle}>
         <h2>{section.title}</h2>
         <div ref={contentRef}>
           <ReactMarkdown>{section.content || ""}</ReactMarkdown>
         </div>
-      </StructuredContent>
+      </div>
     );
   };
 
   return (
-    <PokedexRightContainer>
-      <PokedexRightTop>
+    <div css={pokedexRightContainerStyle}>
+      <div css={pokedexRightTopStyle}>
         <SpeechControls
           isListening={isListening}
           isProcessing={isProcessing}
           onStartListening={startListening}
           onStopListening={stopListening}
         />
-      </PokedexRightTop>
+      </div>
 
-      <ScreenContainer>
+      <div css={screenContainerStyle}>
         <SectionTabs
           sections={structuredData?.sections}
           activeSection={activeSection}
           handleSectionChange={handleSectionChange}
         />
 
-        <Screen>
-          <ScreenContent ref={displayRef}>
+        <div css={screenStyle}>
+          <div css={screenContentStyle} ref={displayRef}>
             {renderStructuredContent()}
-          </ScreenContent>
-        </Screen>
+          </div>
+        </div>
 
-        <InputArea ref={formRef} onSubmit={handleSubmit}>
-          <InputWithStatus>
-            <Input
+        <form css={inputAreaStyle} ref={formRef} onSubmit={handleSubmit}>
+          <div css={inputWithStatusStyle}>
+            <input
+              css={inputStyle}
               type="text"
               value={
                 isListening
@@ -428,45 +427,47 @@ export default function PokedexRight({
               }
               disabled={loading || isListening || isProcessing}
             />
-            {isListening && <ListeningIndicator />}
-            {isProcessing && <ProcessingIndicator />}
+            {isListening && <div css={listeningIndicatorStyle} />}
+            {isProcessing && <div css={processingIndicatorStyle} />}
             {speechError && !isListening && !isProcessing && (
-              <SpeechErrorIndicator title={`Error: ${speechError}`}>
+              <div
+                css={speechErrorIndicatorStyle}
+                title={`Error: ${speechError}`}
+              >
                 ⚠️
-              </SpeechErrorIndicator>
+              </div>
             )}
-          </InputWithStatus>
+          </div>
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div style={{ display: "flex", justifyContent: "start" }}>
-              <Button
+              <button
+                css={buttonStyle(isSmallScreen)}
                 onClick={playCry}
                 disabled={!crySoundLoaded || !currentPokemon}
                 title="Play Pokémon cry"
-                small={isSmallScreen}
                 style={{ borderRadius: "8px 0 0 8px" }}
               >
                 <span role="img" aria-label="Sound">
                   🔊
                 </span>
-              </Button>
-              <Button
+              </button>
+              <button
+                css={buttonStyle(isSmallScreen)}
                 onClick={cycleSprite}
                 disabled={!currentPokemon}
                 title="Change sprite view"
-                small={isSmallScreen}
                 style={{ borderRadius: "0 8px 8px 0" }}
               >
                 <span role="img" aria-label="Image">
                   🔄
                 </span>
-              </Button>
+              </button>
             </div>
 
             <button
               onClick={isSpeaking ? onStop : onSpeak}
-              css={speechButtonStyle}
-              className={isSpeaking ? "speaking" : ""}
+              css={[speechButtonStyle, isSpeaking && css`&.speaking`]}
               title={isSpeaking ? "Stop reading" : "Read aloud"}
               disabled={isProcessing}
               type="button"
@@ -479,17 +480,18 @@ export default function PokedexRight({
               </span>
             </button>
 
-            <SearchButton
+            <button
+              css={searchButtonStyle}
               type="submit"
               disabled={
                 loading || isProcessing || (!input.trim() && !transcript.trim())
               }
             >
               SEARCH
-            </SearchButton>
+            </button>
           </div>
-        </InputArea>
-      </ScreenContainer>
-    </PokedexRightContainer>
+        </form>
+      </div>
+    </div>
   );
 }

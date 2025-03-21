@@ -1,7 +1,7 @@
 import React from "react";
-import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
-const LoadingContainer = styled.div`
+const loadingContainerStyle = css`
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -9,18 +9,18 @@ const LoadingContainer = styled.div`
   height: 100%;
 `;
 
-const PokeballSpinner = styled.div`
+const pokeballSpinnerStyle = (theme) => css`
   width: 80px;
   height: 80px;
   background: linear-gradient(
     to bottom,
-    ${(props) => props.theme.colors.pokedexLightRed} 0%,
-    ${(props) => props.theme.colors.pokedexLightRed} 50%,
+    ${theme.colors.pokedexLightRed} 0%,
+    ${theme.colors.pokedexLightRed} 50%,
     white 50%,
     white 100%
   );
   border-radius: 50%;
-  border: 5px solid ${(props) => props.theme.colors.pokedexBlack};
+  border: 5px solid ${theme.colors.pokedexBlack};
   position: relative;
   animation: rotate 2s infinite linear;
 
@@ -29,7 +29,7 @@ const PokeballSpinner = styled.div`
     width: 20px;
     height: 20px;
     background-color: white;
-    border: 5px solid ${(props) => props.theme.colors.pokedexBlack};
+    border: 5px solid ${theme.colors.pokedexBlack};
     border-radius: 50%;
     position: absolute;
     top: 50%;
@@ -49,8 +49,8 @@ const PokeballSpinner = styled.div`
 
 export default function LoadingAnimation() {
   return (
-    <LoadingContainer>
-      <PokeballSpinner />
-    </LoadingContainer>
+    <div css={loadingContainerStyle}>
+      <div css={pokeballSpinnerStyle} />
+    </div>
   );
 }

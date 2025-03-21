@@ -2,13 +2,20 @@
 # Build stage for frontend
 FROM --platform=$BUILDPLATFORM node:23-alpine AS frontend-builder
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy pnpm-lock.yaml in addition to package.json
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+
+# Install dependencies using pnpm
+RUN pnpm install --frozen-lockfile
+
 COPY frontend .
-RUN npm run build
+RUN pnpm run build
 
 # Build stage for backend services
-# FROM --platform=$TARGETPLATFORM ghcr.io/astral-sh/uv:python3.13-alpine
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 WORKDIR /app
 

@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import { css } from "@emotion/react";
 import LoadingAnimation from "./LoadingAnimation";
 import PokemonDisplay from "./PokemonDisplay";
 import { getCurrentSprite } from "../utils/spriteUtils";
-import styled from "@emotion/styled";
 import { theme } from "../theme";
 
-const PokedexLeftContainer = styled.div`
+const pokedexLeftContainerStyle = css`
   flex: 1;
   background-color: ${theme.colors.pokedexRed};
   border-radius: 15px 5px 5px 15px;
@@ -15,26 +15,25 @@ const PokedexLeftContainer = styled.div`
   z-index: 2;
 `;
 
-const TopSection = styled.div`
+const topSectionStyle = css`
   display: flex;
   align-items: center;
   padding: 15px;
   border-bottom: 3px solid ${theme.colors.pokedexDarkRed};
 `;
 
-const Light = styled.div`
+const lightStyle = (color, size, isSmall) => css`
   position: relative;
   border-radius: 50%;
-
-  &.blue {
-    width: ${(props) => (props.small ? "40px" : "60px")};
-    height: ${(props) => (props.small ? "40px" : "60px")};
-    background-color: ${theme.colors.pokedexBlue};
+  width: ${isSmall ? size.small : size.large}px;
+  height: ${isSmall ? size.small : size.large}px;
+  background-color: ${theme.colors[color]};
+  ${color === "pokedexBlue" &&
+  `
     border: 5px solid white;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3),
       inset 0 0 10px rgba(255, 255, 255, 0.5);
     margin-right: auto;
-
     &::after {
       content: "";
       position: absolute;
@@ -45,14 +44,11 @@ const Light = styled.div`
       top: 5px;
       left: 5px;
     }
-  }
-
-  &.small {
-    width: ${(props) => (props.small ? "15px" : "20px")};
-    height: ${(props) => (props.small ? "15px" : "20px")};
+  `}
+  ${color !== "pokedexBlue" &&
+  `
     border: 2px solid rgba(0, 0, 0, 0.2);
     margin-left: 10px;
-
     &::after {
       content: "";
       position: absolute;
@@ -63,20 +59,10 @@ const Light = styled.div`
       top: 2px;
       left: 2px;
     }
-  }
-
-  &.red {
-    background-color: ${theme.colors.pokedexLightRed};
-  }
-  &.yellow {
-    background-color: ${theme.colors.pokedexYellow};
-  }
-  &.green {
-    background-color: ${theme.colors.pokedexGreen};
-  }
+  `}
 `;
 
-const ScreenContainer = styled.div`
+const screenContainerStyle = css`
   padding: 20px;
   background-color: ${theme.colors.pokedexRed};
   display: flex;
@@ -84,7 +70,7 @@ const ScreenContainer = styled.div`
   height: calc(100% - 93px);
 `;
 
-const Screen = styled.div`
+const screenStyle = css`
   background-color: ${theme.colors.screenBg};
   border-radius: 10px;
   border: 15px solid ${theme.colors.screenBorder};
@@ -100,7 +86,7 @@ const Screen = styled.div`
   }
 `;
 
-const LeftScreenContent = styled.div`
+const leftScreenContentStyle = css`
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -110,16 +96,16 @@ const LeftScreenContent = styled.div`
   padding: 5px;
 `;
 
-const Controls = styled.div`
+const controlsStyle = css`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 20px 0 10px;
 `;
 
-const DPad = styled.div`
-  width: ${({ small }) => (small ? "100px" : "120px")};
-  height: ${({ small }) => (small ? "100px" : "120px")};
+const dPadStyle = (isSmall) => css`
+  width: ${isSmall ? "100px" : "120px"};
+  height: ${isSmall ? "100px" : "120px"};
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -129,8 +115,8 @@ const DPad = styled.div`
     justify-content: center;
 
     .d-pad-btn {
-      width: ${({ small }) => (small ? "20px" : "30px")};
-      height: ${({ small }) => (small ? "20px" : "30px")};
+      width: ${isSmall ? "20px" : "30px"};
+      height: ${isSmall ? "20px" : "30px"};
       background-color: ${theme.colors.pokedexBlack};
       border-radius: 5px;
 
@@ -152,45 +138,161 @@ const DPad = styled.div`
   }
 `;
 
+const pokemonImageDisplayStyle = css`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+`;
+
+const spriteContainerStyle = css`
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+`;
+
+const pokemonMainSpriteStyle = (scale, opacity) => css`
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform: scale(${scale});
+  opacity: ${opacity};
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+`;
+
+const pokemonNameBannerStyle = css`
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  width: 100%;
+  padding: 5px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: ${theme.fonts.pixel};
+  font-size: 1rem;
+  text-transform: uppercase;
+`;
+
+const pokemonNameStyle = css`
+  margin: 0;
+  font-size: 1.2rem;
+  text-transform: capitalize;
+`;
+
+const pokemonIdStyle = css`
+  font-size: 1rem;
+`;
+
 export default function PokedexLeft({
   loading,
   currentPokemon,
   currentSpriteIndex,
 }) {
   const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
+  const spriteContainerRef = useRef(null);
+  const spriteRef = useRef(null);
+  const [spriteScale, setSpriteScale] = useState(1);
+  const [spriteOpacity, setSpriteOpacity] = useState(0);
+
+  const calculateSpriteScale = useCallback(() => {
+    if (spriteContainerRef.current && spriteRef.current) {
+      const containerWidth = spriteContainerRef.current.offsetWidth;
+      const containerHeight = spriteContainerRef.current.offsetHeight;
+      const spriteWidth = spriteRef.current.naturalWidth;
+      const spriteHeight = spriteRef.current.naturalHeight;
+
+      if (spriteWidth === 0 || spriteHeight === 0) {
+        setTimeout(calculateSpriteScale, 50);
+        return;
+      }
+
+      const scaleX = (containerWidth * 0.8) / spriteWidth;
+      const scaleY = (containerHeight * 0.8) / spriteHeight;
+      const scale = Math.min(scaleX, scaleY);
+
+      setSpriteScale(scale);
+      setTimeout(() => setSpriteOpacity(1), 50);
+    }
+  }, []);
+
+  useEffect(() => {
+    calculateSpriteScale();
+    window.addEventListener("resize", calculateSpriteScale);
+
+    return () => {
+      window.removeEventListener("resize", calculateSpriteScale);
+    };
+  }, [calculateSpriteScale]);
+
+  useEffect(() => {
+    setSpriteOpacity(0);
+    calculateSpriteScale();
+  }, [currentPokemon, currentSpriteIndex, calculateSpriteScale]);
 
   return (
-    <PokedexLeftContainer>
-      <TopSection>
-        <Light className="blue" small={isSmallScreen} />
-        <Light className="small red" small={isSmallScreen} />
-        <Light className="small yellow" small={isSmallScreen} />
-        <Light className="small green" small={isSmallScreen} />
-      </TopSection>
+    <div css={pokedexLeftContainerStyle}>
+      <div css={topSectionStyle}>
+        <div
+          css={lightStyle(
+            "pokedexBlue",
+            { small: 40, large: 60 },
+            isSmallScreen
+          )}
+        />
+        <div
+          css={lightStyle(
+            "pokedexLightRed",
+            { small: 15, large: 20 },
+            isSmallScreen
+          )}
+        />
+        <div
+          css={lightStyle(
+            "pokedexYellow",
+            { small: 15, large: 20 },
+            isSmallScreen
+          )}
+        />
+        <div
+          css={lightStyle(
+            "pokedexGreen",
+            { small: 15, large: 20 },
+            isSmallScreen
+          )}
+        />
+      </div>
 
-      <ScreenContainer>
-        <Screen>
+      <div css={screenContainerStyle}>
+        <div css={screenStyle}>
           {loading ? (
             <LoadingAnimation />
           ) : (
-            <LeftScreenContent>
+            <div css={leftScreenContentStyle}>
               {currentPokemon ? (
-                <div className="pokemon-image-display">
-                  <div className="sprite-container">
+                <div css={pokemonImageDisplayStyle}>
+                  <div css={spriteContainerStyle} ref={spriteContainerRef}>
                     {getCurrentSprite(currentPokemon, currentSpriteIndex) && (
                       <img
+                        ref={spriteRef}
+                        css={pokemonMainSpriteStyle(spriteScale, spriteOpacity)}
                         src={getCurrentSprite(
                           currentPokemon,
                           currentSpriteIndex
                         )}
                         alt={`${currentPokemon.name || "Pokémon"} sprite`}
-                        className="pokemon-main-sprite"
+                        onLoad={calculateSpriteScale}
                       />
                     )}
                   </div>
-                  <div className="pokemon-name-banner">
-                    <h2>{currentPokemon.name || "Unknown"}</h2>
-                    <span>
+                  <div css={pokemonNameBannerStyle}>
+                    <h2 css={pokemonNameStyle}>
+                      {currentPokemon.name || "Unknown"}
+                    </h2>
+                    <span css={pokemonIdStyle}>
                       #{(currentPokemon.id || 0).toString().padStart(3, "0")}
                     </span>
                   </div>
@@ -198,21 +300,21 @@ export default function PokedexLeft({
               ) : (
                 <PokemonDisplay pokemon={null} />
               )}
-            </LeftScreenContent>
+            </div>
           )}
-        </Screen>
-        <Controls>
+        </div>
+        <div css={controlsStyle}>
           <div
-            style={{
-              background: "green",
-              width: 120,
-              height: 60,
-              borderRadius: 8,
-              border: "2px solid black",
-            }}
+            css={css`
+              background: green;
+              width: 120px;
+              height: 60px;
+              border-radius: 8px;
+              border: 2px solid black;
+            `}
           />
 
-          <DPad small={isSmallScreen}>
+          <div css={dPadStyle(isSmallScreen)}>
             <div className="d-pad-row">
               <div className="d-pad-btn up"></div>
             </div>
@@ -224,9 +326,9 @@ export default function PokedexLeft({
             <div className="d-pad-row">
               <div className="d-pad-btn down"></div>
             </div>
-          </DPad>
-        </Controls>
-      </ScreenContainer>
-    </PokedexLeftContainer>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
