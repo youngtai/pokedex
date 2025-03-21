@@ -176,9 +176,8 @@ Respond in Markdown format with appropriate headers for each section.
 
 {
   "sections": [
-    {
       "title": "Summary",
-      "content": "A concise description of the Pokémon"
+      "content": "A concise description of the Pokémon, answered like a Pokédex entry. Do not include links to cries or sprites here. If the user asked a specific question answer it here. If the user asks for a Pokémon that doesn't exist, answer tell them that you don't have any data on that Pokémon."
     },
     {
       "title": "Types",
@@ -204,6 +203,7 @@ Respond in Markdown format with appropriate headers for each section.
 }
 
 Format the content of each section in Markdown. If a section doesn't have relevant information, you can omit it. For multiple Pokémon, add a separate object for each in an array.
+Do not make up information or Pokémon that don't exist. If you don't know the answer, leave the section out.
 Respond with ONLY valid JSON that follows this structure - do not include any explanatory text outside the JSON.""",
                     }
                 )
@@ -386,7 +386,7 @@ async def speech_to_text(
         logger.info(f"Audio data size: {len(audio_data)} bytes")
 
         language = "en"
-        prompt = "Pokémon names and terms"
+        prompt = "Expect Pokémon names and terms. Correct spelling to match known Pokémon names."
 
         transcript = await mcp_client.transcribe_audio(audio_data, prompt, language)
 
