@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 from groq import Groq
 from litestar import Litestar, MediaType, post
 from litestar.datastructures import UploadFile
-from litestar.datastructures.upload_file import UploadFile
 from litestar.enums import RequestEncodingType
 from litestar.params import Body
 from litestar.response import Response
