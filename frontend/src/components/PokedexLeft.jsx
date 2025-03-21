@@ -232,6 +232,7 @@ export default function PokedexLeft({
   const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
   const spriteContainerRef = useRef(null);
   const spriteRef = useRef(null);
+  const mediaStreamRef = useRef(null);
   const [spriteScale, setSpriteScale] = useState(1);
   const [spriteOpacity, setSpriteOpacity] = useState(0);
 
@@ -261,6 +262,14 @@ export default function PokedexLeft({
     }
   }, []);
 
+  const stopCamera = useCallback(() => {
+    if (mediaStreamRef.current) {
+      console.log("Stopping camera");
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     calculateSpriteScale();
     window.addEventListener("resize", calculateSpriteScale);
@@ -276,9 +285,7 @@ export default function PokedexLeft({
   }, [currentPokemon, currentSpriteIndex, calculateSpriteScale]);
 
   const handleToggleCamera = () => {
-    if (!isCameraActive) {
-      setIsCameraActive(true);
-    }
+    setIsCameraActive(!isCameraActive);
   };
 
   const handleImageCapture = (file) => {
@@ -326,7 +333,8 @@ export default function PokedexLeft({
           ) : isCameraActive ? (
             <CameraView
               onCapture={handleImageCapture}
-              onClose={() => setIsCameraActive(false)}
+              mediaStreamRef={mediaStreamRef}
+              stopCamera={stopCamera}
             />
           ) : capturedImage ? (
             <div css={leftScreenContentStyle}>
@@ -409,9 +417,9 @@ export default function PokedexLeft({
                   cursor: pointer;
                   border: none;
                 `}
-                title="Take a photo"
+                title={isCameraActive ? "Close camera" : "Take a photo"}
                 onClick={handleToggleCamera}
-                disabled={isCameraActive || isAnalyzingImage}
+                disabled={isAnalyzingImage}
               />
               <div
                 css={css`

@@ -402,6 +402,11 @@ function App() {
   };
 
   const handleImageCapture = async (file) => {
+    if (!file) {
+      setIsCameraActive(false);
+      return;
+    }
+
     setIsCameraActive(false);
     setCapturedImage(file);
     setIsAnalyzingImage(true);

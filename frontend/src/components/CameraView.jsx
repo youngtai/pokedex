@@ -69,9 +69,8 @@ const errorMessageStyle = css`
   text-align: center;
 `;
 
-const CameraView = ({ onCapture, onClose }) => {
+const CameraView = ({ onCapture, mediaStreamRef, stopCamera }) => {
   const videoRef = useRef(null);
-  const mediaStreamRef = useRef(null);
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
 
@@ -92,14 +91,7 @@ const CameraView = ({ onCapture, onClose }) => {
         "Could not access camera. Please make sure you've granted camera permissions."
       );
     }
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-  }, []);
+  }, [mediaStreamRef]);
 
   useEffect(() => {
     initCamera();
@@ -137,7 +129,7 @@ const CameraView = ({ onCapture, onClose }) => {
       "image/jpeg",
       0.9
     );
-  }, [onCapture, stopCamera]);
+  }, [onCapture, stopCamera, mediaStreamRef]);
 
   return (
     <div css={cameraContainerStyle}>
