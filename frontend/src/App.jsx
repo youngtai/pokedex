@@ -202,17 +202,7 @@ function App() {
     currentPokemon?.cry_url_backup
   );
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-
-    const userQuery = input.trim();
-    if (!userQuery || loading) return;
-
-    setInput("");
-    stopListening();
-    setLoading(true);
-    stopSpeaking();
-
+  const handleProcessQuery = async (userQuery) => {
     try {
       const response = await processInput(userQuery);
 
@@ -263,6 +253,20 @@ function App() {
     }
   };
 
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+
+    const userQuery = input.trim();
+    if (!userQuery || loading) return;
+
+    setInput("");
+    stopListening();
+    setLoading(true);
+    stopSpeaking();
+
+    await handleProcessQuery(userQuery);
+  };
+
   const {
     transcript,
     isListening,
@@ -271,15 +275,9 @@ function App() {
     stopListening,
     error: speechError,
   } = useSpeechRecognition({
-    onResult: (result, autoSubmit = true) => {
+    onResult: (result) => {
       if (result.trim() && !loading) {
-        setInput(result.trim());
-
-        if (autoSubmit) {
-          setTimeout(() => {
-            handleSubmit();
-          }, 100);
-        }
+        handleProcessQuery(result.trim());
       }
     },
   });

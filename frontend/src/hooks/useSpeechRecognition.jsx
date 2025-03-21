@@ -1,9 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 
-const useSpeechRecognition = ({
-  onResult = () => {},
-  autoSubmit = true,
-} = {}) => {
+const useSpeechRecognition = ({ onResult = () => {} } = {}) => {
   const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -61,7 +58,7 @@ const useSpeechRecognition = ({
             console.log("Transcription received:", data.transcript);
             const transcribedText = data.transcript.trim();
             setTranscript(transcribedText);
-            onResult(transcribedText, autoSubmit);
+            onResult(transcribedText);
           } else {
             console.error(
               "No transcript in response or empty transcript:",
@@ -88,7 +85,7 @@ const useSpeechRecognition = ({
       setError("microphone_access_error");
       setIsListening(false);
     }
-  }, [onResult, autoSubmit]);
+  }, [onResult]);
 
   const stopListening = useCallback(() => {
     if (mediaRecorderRef.current && isListening) {

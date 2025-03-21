@@ -149,7 +149,7 @@ export default function SpeechControls({
         title={
           isProcessing
             ? "Processing speech..."
-            : "Press and hold for 1 second to talk"
+            : "Press and hold for longer than 1 second to talk"
         }
         disabled={isProcessing}
         type="button"
@@ -161,7 +161,7 @@ export default function SpeechControls({
               ? "Recording"
               : isProcessing
               ? "Processing"
-              : "Press and hold to talk"
+              : "Press and hold for longer than 1 second to talk"
           }
         />
       </button>
