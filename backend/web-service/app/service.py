@@ -105,13 +105,13 @@ class MCPClient:
         messages = [
             {
                 "role": "system",
-                "content": """You are a Pokédex. Determine if the user is asking about a Pokémon. If not, respond with "I'm sorry, I don't have information about that. Respond with the following structure:
+                "content": """You are a Pokédex. Determine if the user is asking about a Pokémon. Respond with the following structure:
 
 {
   "sections": [
     {
       "title": "Summary",
-      "content": "Answer as a Pokédex would by answering in a way that would be useful to a Pokémon trainer. If the user asked a specific question answer it here. If the user asked for a Pokémon that doesn't exist, tell them that you don't have any data on that Pokémon. Do not include links to cries or sprites here."
+      "content": "Answer as a Pokédex would by answering in a way that would be useful to a Pokémon trainer. If the user asked a specific question answer it here. If the user asked for a Pokémon that doesn't exist, tell them that you don't have any data on that Pokémon. Do not include links to cries or sprites here. If you don't know an answer, respond with "I'm sorry, I don't have information about that"."
     }
   ]
 }
@@ -534,8 +534,7 @@ Structure your response as a JSON object with the following sections:
 Format the content of each section in Markdown. If a section doesn't have relevant information, you can omit it.
 Respond with ONLY valid JSON that follows this structure - do not include any explanatory text outside the JSON."""
 
-                        # Then create a user message with the Pokemon data
-                        user_message = f"""I've identified a {pokemon_data["name"]} in a photo with {claude_result["confidence"]} confidence. 
+                        assistant_message = f"""I've identified a {pokemon_data["name"]} in a photo with {claude_result["confidence"]} confidence.
 Here's the Pokémon's data:
 
 {json.dumps(pokemon_data, indent=2)}
@@ -543,13 +542,15 @@ Here's the Pokémon's data:
 Generate a structured Pokédex response about this Pokémon."""
 
                         # Get structured response from GPT
-                        gpt_response = mcp_client.openai.chat.completions.create(
-                            model="gpt-4o-mini",
-                            temperature=0.7,
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_message},
-                            ],
+                        gpt_response = await asyncio.to_thread(
+                            lambda: mcp_client.openai.chat.completions.create(
+                                model="gpt-4o-mini",
+                                temperature=0.7,
+                                messages=[
+                                    {"role": "system", "content": system_prompt},
+                                    {"role": "assistant", "content": assistant_message},
+                                ],
+                            )
                         )
 
                         response_text = gpt_response.choices[0].message.content.strip()
@@ -565,10 +566,28 @@ Generate a structured Pokédex response about this Pokémon."""
 
                         structured_response = json.loads(response_text)
 
-                    except (json.JSONDecodeError, IndexError, AttributeError) as e:
-                        logger.error(f"Error parsing Pokémon data: {e}")
+                    except Exception as e:
+                        logger.error(
+                            f"Error processing Pokemon data or generating response: {e}"
+                        )
+                        structured_response = {
+                            "sections": [
+                                {
+                                    "title": "Error Processing",
+                                    "content": f"I identified a {claude_result['pokemon_name']} but encountered an error while processing its data: {str(e)}",
+                                }
+                            ]
+                        }
                 except Exception as e:
                     logger.error(f"Error getting Pokémon data: {e}")
+                    structured_response = {
+                        "sections": [
+                            {
+                                "title": "Data Retrieval Error",
+                                "content": f"I identified a {claude_result['pokemon_name']} but couldn't retrieve its data: {str(e)}",
+                            }
+                        ]
+                    }
             else:
                 # No Pokémon was identified, create a simple structured response
                 structured_response = {
