@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import usePokemonCry from "../hooks/usePokemonCry";
 import { theme } from "../theme";
 import { getCurrentSprite } from "../utils/spriteUtils";
+import CameraView from "./CameraView";
 import LoadingAnimation from "./LoadingAnimation";
 import PokemonDisplay from "./PokemonDisplay";
 import SpeechControls from "./SpeechControls";
@@ -47,7 +48,7 @@ const lightStyle = (color, size, isSmall, isBlinking) => css`
       top: 5px;
       left: 5px;
     }
-    
+
     @keyframes blueLightBlink {
       0% {
         opacity: 1;
@@ -206,6 +207,12 @@ const pokemonIdStyle = css`
   font-size: 1rem;
 `;
 
+const capturedImageStyle = css`
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+`;
+
 export default function PokedexLeft({
   loading,
   currentPokemon,
@@ -216,6 +223,11 @@ export default function PokedexLeft({
   startListening,
   stopListening,
   cycleSprite,
+  isCameraActive,
+  setIsCameraActive,
+  onImageCapture,
+  capturedImage,
+  isAnalyzingImage,
 }) {
   const isSmallScreen = window.innerWidth <= parseInt(theme.breakpoints.mobile);
   const spriteContainerRef = useRef(null);
@@ -263,6 +275,16 @@ export default function PokedexLeft({
     calculateSpriteScale();
   }, [currentPokemon, currentSpriteIndex, calculateSpriteScale]);
 
+  const handleToggleCamera = () => {
+    if (!isCameraActive) {
+      setIsCameraActive(true);
+    }
+  };
+
+  const handleImageCapture = (file) => {
+    onImageCapture(file);
+  };
+
   return (
     <div css={pokedexLeftContainerStyle}>
       <div css={topSectionStyle}>
@@ -299,8 +321,21 @@ export default function PokedexLeft({
 
       <div css={screenContainerStyle}>
         <div css={screenStyle}>
-          {loading ? (
+          {loading || isAnalyzingImage ? (
             <LoadingAnimation />
+          ) : isCameraActive ? (
+            <CameraView
+              onCapture={handleImageCapture}
+              onClose={() => setIsCameraActive(false)}
+            />
+          ) : capturedImage ? (
+            <div css={leftScreenContentStyle}>
+              <img
+                src={URL.createObjectURL(capturedImage)}
+                alt="Captured Pokemon"
+                css={capturedImageStyle}
+              />
+            </div>
           ) : (
             <div css={leftScreenContentStyle}>
               {currentPokemon ? (
@@ -350,7 +385,6 @@ export default function PokedexLeft({
               onStopListening={stopListening}
             />
           </div>
-
           <div
             css={css`
               display: flex;
@@ -372,7 +406,12 @@ export default function PokedexLeft({
                   height: 8px;
                   border-radius: 4px;
                   background-color: red;
+                  cursor: pointer;
+                  border: none;
                 `}
+                title="Take a photo"
+                onClick={handleToggleCamera}
+                disabled={isCameraActive || isAnalyzingImage}
               />
               <div
                 css={css`
@@ -385,6 +424,9 @@ export default function PokedexLeft({
                   height: 8px;
                   border-radius: 4px;
                   background-color: blue;
+                  cursor: pointer;
+                  border: none;
+                  opacity: ${!crySoundLoaded || !currentPokemon ? 0.5 : 1};
                 `}
                 onClick={playCry}
                 disabled={!crySoundLoaded || !currentPokemon}

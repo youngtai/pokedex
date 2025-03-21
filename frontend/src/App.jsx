@@ -172,15 +172,19 @@ const globalStyles = css`
     background-color: ${theme.typeColors.fairy};
   }
 `;
+
 function App() {
   const [displayText, setDisplayText] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [currentPokemon, setCurrentPokemon] = useState(null);
   const [currentSpriteIndex, setCurrentSpriteIndex] = useState(0);
   const [structuredData, setStructuredData] = useState(null);
   const [activeSection, setActiveSection] = useState(0);
+
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   const displayRef = useRef(null);
   const contentRef = useRef(null);
@@ -397,6 +401,170 @@ function App() {
     }
   };
 
+  const handleImageCapture = async (file) => {
+    setIsCameraActive(false);
+    setCapturedImage(file);
+    setIsAnalyzingImage(true);
+
+    try {
+      // Create a FormData instance
+      const formData = new FormData();
+      formData.append("data", file);
+
+      // Send the image to the backend for analysis
+      const response = await fetch("/service/analyze-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to analyze image");
+      }
+
+      const result = await response.json();
+      console.log("Image analysis result:", result);
+
+      if (
+        result.identification &&
+        result.identification.pokemon_identified &&
+        result.pokemon_data
+      ) {
+        // If a Pokémon was identified and we have data, update the state
+        setCurrentPokemon(result.pokemon_data);
+        setCurrentSpriteIndex(0);
+
+        // Set the structured data if it exists
+        if (result.structured_data) {
+          setStructuredData(result.structured_data);
+          setActiveSection(0);
+        }
+
+        // Use the raw markdown if it exists
+        if (result.raw_markdown) {
+          setDisplayText(result.raw_markdown);
+        }
+
+        // Add to chat history
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "user", content: "📷 [Shared an image]" },
+          {
+            role: "assistant",
+            content:
+              result.raw_markdown ||
+              `I've identified **${result.pokemon_data.name}** in your image!`,
+            structuredData: result.structured_data,
+          },
+        ]);
+
+        // Read out the response
+        setTimeout(() => {
+          if (result.structured_data?.sections?.[0]?.content) {
+            speakText(result.structured_data.sections[0].content);
+          } else {
+            speakText(
+              `I've identified ${result.pokemon_data.name} in your image!`
+            );
+          }
+        }, 500);
+      } else {
+        // No Pokémon was identified
+        setCurrentPokemon(null);
+
+        // Use the structured data from the response if available
+        if (result.structured_data) {
+          setStructuredData(result.structured_data);
+          setActiveSection(0);
+        } else {
+          const defaultStructuredData = {
+            sections: [
+              {
+                title: "No Pokémon Identified",
+                content:
+                  "I couldn't identify any Pokémon in this image. Please try again with a clearer image of a Pokémon.",
+              },
+            ],
+          };
+          setStructuredData(defaultStructuredData);
+        }
+
+        // Use raw markdown if available
+        if (result.raw_markdown) {
+          setDisplayText(result.raw_markdown);
+        } else {
+          setDisplayText(
+            "# No Pokémon Identified\n\nI couldn't identify any Pokémon in this image. Please try again with a clearer image of a Pokémon."
+          );
+        }
+
+        // Add to chat history
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "user", content: "📷 [Shared an image]" },
+          {
+            role: "assistant",
+            content:
+              result.raw_markdown ||
+              "I couldn't identify any Pokémon in this image.",
+            structuredData: result.structured_data,
+          },
+        ]);
+
+        // Read out the response
+        setTimeout(() => {
+          if (result.structured_data?.sections?.[0]?.content) {
+            speakText(result.structured_data.sections[0].content);
+          } else {
+            speakText(
+              "I couldn't identify any Pokémon in this image. Please try again with a clearer image of a Pokémon."
+            );
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+
+      const errorData = {
+        sections: [
+          {
+            title: "Error",
+            content:
+              "Sorry, I encountered an error while analyzing the image. Please try again.",
+          },
+        ],
+      };
+
+      setStructuredData(errorData);
+      setActiveSection(0);
+      setDisplayText(
+        "# Error\n\nSorry, I encountered an error while analyzing the image. Please try again."
+      );
+
+      // Add to chat history
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "user", content: "📷 [Shared an image]" },
+        {
+          role: "assistant",
+          content: "Sorry, I encountered an error while analyzing the image.",
+          structuredData: errorData,
+        },
+      ]);
+
+      setTimeout(() => {
+        speakText(
+          "Sorry, I encountered an error while analyzing the image. Please try again."
+        );
+      }, 500);
+    } finally {
+      setIsAnalyzingImage(false);
+      // Clear the captured image after a delay so user can see what was captured
+      setTimeout(() => {
+        setCapturedImage(null);
+      }, 3000);
+    }
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <Global styles={globalStyles} />
@@ -411,6 +579,11 @@ function App() {
           startListening={startListening}
           stopListening={stopListening}
           cycleSprite={cycleSprite}
+          isCameraActive={isCameraActive}
+          setIsCameraActive={setIsCameraActive}
+          onImageCapture={handleImageCapture}
+          capturedImage={capturedImage}
+          isAnalyzingImage={isAnalyzingImage}
         />
 
         <PokedexRight
@@ -418,7 +591,7 @@ function App() {
           activeSection={activeSection}
           handleSectionChange={handleSectionChange}
           displayText={displayText}
-          loading={loading || isProcessing}
+          loading={loading || isProcessing || isAnalyzingImage}
           displayRef={displayRef}
           contentRef={contentRef}
           isProcessing={isProcessing}

@@ -105,18 +105,18 @@ class MCPClient:
         messages = [
             {
                 "role": "system",
-                "content": """You are a Pokédex. When providing information about Pokémon, structure your response in the following sections:
+                "content": """You are a Pokédex. Determine if the user is asking about a Pokémon. If not, respond with "I'm sorry, I don't have information about that. Respond with the following structure:
 
-1. Summary: A brief overview of the Pokémon
-2. Stats: Formatted key stats
-3. Types: The Pokémon's type(s)
-4. Abilities: List of abilities
-5. Additional Info: Any other relevant details
+{
+  "sections": [
+    {
+      "title": "Summary",
+      "content": "Answer as a Pokédex would by answering in a way that would be useful to a Pokémon trainer. If the user asked a specific question answer it here. If the user asked for a Pokémon that doesn't exist, tell them that you don't have any data on that Pokémon. Do not include links to cries or sprites here."
+    }
+  ]
+}
 
-When multiple Pokémon are involved, organize information clearly by Pokémon name.
-Correct the spelling of any Pokémon names in the query.
-Respond in Markdown format with appropriate headers for each section.
-""",
+Respond with ONLY valid JSON that follows this structure.""",
             },
             {"role": "user", "content": query},
         ]
@@ -175,8 +175,9 @@ Respond in Markdown format with appropriate headers for each section.
 
 {
   "sections": [
+    {
       "title": "Summary",
-      "content": "A concise description of the Pokémon, answered like a Pokédex entry. Do not include links to cries or sprites here. If the user asked a specific question answer it here. If the user asks for a Pokémon that doesn't exist, answer tell them that you don't have any data on that Pokémon."
+      "content": "Answer as a Pokédex would by naming the Pokémon and giving a brief description and some facts about the Pokémon that would be useful to a Pokémon trainer. If the user asked a specific question answer it here. If the user asked for a Pokémon that doesn't exist, tell them that you don't have any data on that Pokémon. Do not include links to cries or sprites here."
     },
     {
       "title": "Types",
@@ -241,36 +242,10 @@ Respond with ONLY valid JSON that follows this structure - do not include any ex
             else:
                 logger.info("Model responded directly without using tools")
                 try:
-                    messages.append(
-                        {
-                            "role": "system",
-                            "content": """Convert your response to a JSON object with the following structure:
+                    # Try to parse the response as JSON directly
+                    response_text = completion.output[0].content[0].text.strip()
 
-{
-  "sections": [
-    {
-      "title": "Summary",
-      "content": "Your response formatted as markdown"
-    }
-  ]
-}
-
-Respond with ONLY valid JSON that follows this structure.""",
-                        }
-                    )
-
-                    structured_response = self.openai.responses.create(
-                        model="gpt-4o-mini",
-                        input=messages
-                        + [
-                            {
-                                "role": "assistant",
-                                "content": completion.output[0].content[0].text,
-                            }
-                        ],
-                    )
-
-                    response_text = structured_response.output_text.strip()
+                    # Clean up the response if it has markdown code blocks
                     if response_text.startswith("```json") and response_text.endswith(
                         "```"
                     ):
@@ -289,7 +264,8 @@ Respond with ONLY valid JSON that follows this structure.""",
                         "raw_data": None,
                     }
                 except (json.JSONDecodeError, Exception) as e:
-                    logger.error(f"Error structuring direct response: {e}")
+                    logger.error(f"Error parsing direct response: {e}")
+                    # If parsing fails, use the text as is
                     return {
                         "structured_data": {
                             "sections": [
@@ -404,6 +380,251 @@ async def speech_to_text(
         )
 
 
+@post("/service/analyze-image", media_type=MediaType.JSON)
+async def analyze_image(
+    data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
+) -> Response:
+    try:
+        if not data:
+            return Response(
+                content={"error": "No image file provided"},
+                status_code=400,
+                media_type=MediaType.JSON,
+            )
+
+        logger.info(
+            f"Received image file: {data.filename}, content_type: {data.content_type}"
+        )
+
+        image_data = await data.read()
+
+        if not image_data:
+            return Response(
+                content={"error": "Empty image file"},
+                status_code=400,
+                media_type=MediaType.JSON,
+            )
+
+        logger.info(f"Image data size: {len(image_data)} bytes")
+
+        # Convert the image to base64 for use with Claude Vision
+        import base64
+
+        base64_image = base64.b64encode(image_data).decode("utf-8")
+
+        # First, use Anthropic's Claude to identify if there's a Pokémon in the image
+        identification_prompt = """
+        You're a Pokémon expert. Look at this image and identify if there's a Pokémon in it. 
+        
+        If you see a Pokémon:
+        1. What Pokémon is it? Be specific about the exact name, matching the official Pokémon database.
+        2. How confident are you in this identification (high, medium, low)?
+        
+        If you don't see any Pokémon or can't confidently identify one, just say "No Pokémon identified".
+        
+        Respond in JSON format only with these fields:
+        {
+          "pokemon_identified": true/false,
+          "pokemon_name": "name" or null,
+          "confidence": "high/medium/low" or null
+        }
+        
+        Important: Make sure the pokemon_name is spelled correctly and matches official Pokémon game databases.
+        If you see nidoran without clear gender, use "nidoran-m".
+        """
+
+        try:
+            identification_response = await asyncio.to_thread(
+                lambda: mcp_client.anthropic.messages.create(
+                    model="claude-3-haiku-20240307",
+                    max_tokens=1000,
+                    temperature=0,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": identification_prompt},
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": data.content_type or "image/jpeg",
+                                        "data": base64_image,
+                                    },
+                                },
+                            ],
+                        }
+                    ],
+                )
+            )
+
+            # Extract JSON from the response
+            import re
+            import json
+
+            # Find JSON in the response
+            json_match = re.search(
+                r"({.*})", identification_response.content[0].text, re.DOTALL
+            )
+            if not json_match:
+                logger.error("No JSON found in Claude identification response")
+                return Response(
+                    content={"error": "Could not parse image analysis results"},
+                    status_code=500,
+                    media_type=MediaType.JSON,
+                )
+
+            claude_result = json.loads(json_match.group(1))
+
+            # If a Pokémon was identified, get its data
+            pokemon_data = None
+            structured_response = None
+
+            if claude_result.get("pokemon_identified") and claude_result.get(
+                "pokemon_name"
+            ):
+                # Clean up the pokemon name (lowercase, remove spaces)
+                pokemon_name = claude_result["pokemon_name"].lower().replace(" ", "-")
+                try:
+                    # Get Pokémon data using the existing MCP tool
+                    session = await mcp_client.get_session()
+                    result = await session.call_tool(
+                        "get_basic_pokemon_data", {"pokemon_name": pokemon_name}
+                    )
+
+                    try:
+                        content_text = result.content[0].text
+                        pokemon_data = json.loads(content_text)
+
+                        # Now use the Pokémon data to generate a structured response similar to process_query
+                        # Start with system prompt
+                        system_prompt = """You are a Pokédex. You're analyzing a photo of a Pokémon.
+                        
+Structure your response as a JSON object with the following sections:
+
+{
+  "sections": [
+    {
+      "title": "Pokémon Identified",
+      "content": "Answer as a Pokédex would by naming the Pokémon and giving a brief description and some facts about the Pokémon that would be useful to a Pokémon trainer."
+    },
+    {
+      "title": "Types",
+      "content": "The Pokémon's primary and secondary types"
+    },
+    {
+      "title": "Base Stats",
+      "content": "- HP: [value]\\n- Attack: [value]\\n- Defense: [value]\\n- Sp. Attack: [value]\\n- Sp. Defense: [value]\\n- Speed: [value]"
+    },
+    {
+      "title": "Abilities",
+      "content": "List and brief description of abilities"
+    },
+    {
+      "title": "Evolution",
+      "content": "Evolution chain information if available"
+    },
+    {
+      "title": "Additional Info",
+      "content": "Other notable facts or interesting trivia about the Pokemon. Do not include links to cries or sprites here."
+    }
+  ]
+}
+
+Format the content of each section in Markdown. If a section doesn't have relevant information, you can omit it.
+Respond with ONLY valid JSON that follows this structure - do not include any explanatory text outside the JSON."""
+
+                        # Then create a user message with the Pokemon data
+                        user_message = f"""I've identified a {pokemon_data["name"]} in a photo with {claude_result["confidence"]} confidence. 
+Here's the Pokémon's data:
+
+{json.dumps(pokemon_data, indent=2)}
+
+Generate a structured Pokédex response about this Pokémon."""
+
+                        # Get structured response from GPT
+                        gpt_response = mcp_client.openai.chat.completions.create(
+                            model="gpt-4o-mini",
+                            temperature=0.7,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_message},
+                            ],
+                        )
+
+                        response_text = gpt_response.choices[0].message.content.strip()
+                        # Clean up the response if it has markdown code blocks
+                        if response_text.startswith(
+                            "```json"
+                        ) and response_text.endswith("```"):
+                            response_text = response_text[7:-3].strip()
+                        elif response_text.startswith("```") and response_text.endswith(
+                            "```"
+                        ):
+                            response_text = response_text[3:-3].strip()
+
+                        structured_response = json.loads(response_text)
+
+                    except (json.JSONDecodeError, IndexError, AttributeError) as e:
+                        logger.error(f"Error parsing Pokémon data: {e}")
+                except Exception as e:
+                    logger.error(f"Error getting Pokémon data: {e}")
+            else:
+                # No Pokémon was identified, create a simple structured response
+                structured_response = {
+                    "sections": [
+                        {
+                            "title": "No Pokémon Identified",
+                            "content": "I couldn't identify any Pokémon in this image. Please try again with a clearer image of a Pokémon.",
+                        }
+                    ]
+                }
+
+            # Build the response with all the data we've collected
+            analysis_result = {
+                "identification": claude_result,
+                "pokemon_data": pokemon_data,
+                "structured_data": structured_response,
+                "raw_markdown": convert_structured_to_markdown(structured_response)
+                if structured_response
+                else "No data available",
+            }
+
+            return Response(
+                content=analysis_result,
+                status_code=200,
+                media_type=MediaType.JSON,
+            )
+
+        except Exception as e:
+            logger.error(f"Error in image analysis: {str(e)}")
+            return Response(
+                content={"error": f"Image analysis failed: {str(e)}"},
+                status_code=500,
+                media_type=MediaType.JSON,
+            )
+
+    except Exception as e:
+        logger.error(f"Error processing image: {str(e)}")
+        return Response(
+            content={"error": str(e)},
+            status_code=500,
+            media_type=MediaType.JSON,
+        )
+
+
+# Add this helper function for converting structured data to markdown
+def convert_structured_to_markdown(structured_data):
+    if not structured_data or "sections" not in structured_data:
+        return "No data available"
+
+    markdown = ""
+    for section in structured_data["sections"]:
+        markdown += f"## {section['title']}\n\n{section['content']}\n\n"
+
+    return markdown.strip()
+
+
 async def startup() -> None:
     logger.info("Running app starup")
     await mcp_client.initialize_session()
@@ -423,7 +644,7 @@ static_files_router = create_static_files_router(
 )
 
 app = Litestar(
-    route_handlers=[pokedex_chat, speech_to_text, static_files_router],
+    route_handlers=[pokedex_chat, speech_to_text, analyze_image, static_files_router],
     debug=True,
     on_startup=[startup],
     on_shutdown=[cleanup],
