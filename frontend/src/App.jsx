@@ -195,6 +195,9 @@ function App() {
 
   const handleProcessQuery = async (userQuery) => {
     try {
+      stopListening();
+      setLoading(true);
+      stopSpeaking();
       const response = await processInput(userQuery);
 
       if (!isMounted.current) return;
@@ -605,9 +608,6 @@ function App() {
           isSpeaking={isSpeaking}
           onSpeak={speakCurrentSection}
           onStop={stopSpeaking}
-          stopListening={stopListening}
-          setLoading={setLoading}
-          stopSpeaking={stopSpeaking}
           handleProcessQuery={handleProcessQuery}
           isPaused={isPaused}
           onResume={toggleSpeaking}

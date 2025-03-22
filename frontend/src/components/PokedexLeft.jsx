@@ -26,23 +26,24 @@ const topSectionStyle = css`
 `;
 
 const createPulseKeyframes = (color) => keyframes`
-  0%, 100% { background-color: ${theme.colors[color]}; }
-  50% { background-color: ${getLighterColor(theme.colors[color])}; }
+  0%, 100% { background-color: ${theme.colors[color]}; scale: 1; }
+  50% { 
+  background-color: ${getLighterColor(theme.colors[color])}; 
+  scale: 1.1;
+  }
 `;
 
-const getLighterColor = (hex) => {
-  // Convert hex to RGB
-  let r = parseInt(hex.slice(1, 3), 16);
-  let g = parseInt(hex.slice(3, 5), 16);
-  let b = parseInt(hex.slice(5, 7), 16);
+const getLighterColor = (rgb) => {
+  // Extract RGB values
+  let [r, g, b] = rgb.match(/\d+/g).map(Number);
 
   // Increase brightness
   r = Math.min(255, r + 100);
-  g = Math.min(255, g + 75);
-  b = Math.min(255, b + 75);
+  g = Math.min(255, g + 100);
+  b = Math.min(255, b + 100);
 
-  // Convert back to hex
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  // Return new RGB string
+  return `rgb(${r}, ${g}, ${b})`;
 };
 
 const lightStyle = (color, size, isSmall, isBlinking, blinkDelay = 0) => css`
@@ -161,11 +162,13 @@ const dPadStyle = (isSmall) => css`
       &.left {
         border-top-left-radius: 5px;
         border-bottom-left-radius: 5px;
+        cursor: pointer;
       }
 
       &.right {
         border-top-right-radius: 5px;
         border-bottom-right-radius: 5px;
+        cursor: pointer;
       }
     }
   }
@@ -322,7 +325,7 @@ export default function PokedexLeft({
             "pokedexLightRed",
             { small: 15, large: 20 },
             isSmallScreen,
-            isProcessing,
+            isProcessing || loading,
             0
           )}
         />
@@ -331,7 +334,7 @@ export default function PokedexLeft({
             "pokedexYellow",
             { small: 15, large: 20 },
             isSmallScreen,
-            isProcessing,
+            isProcessing || loading,
             0.2
           )}
         />
@@ -340,7 +343,7 @@ export default function PokedexLeft({
             "pokedexGreen",
             { small: 15, large: 20 },
             isSmallScreen,
-            isProcessing,
+            isProcessing || loading,
             0.4
           )}
         />
@@ -431,11 +434,11 @@ export default function PokedexLeft({
               <button
                 css={css`
                   width: 50px;
-                  height: 8px;
+                  height: 10px;
                   border-radius: 4px;
-                  background-color: red;
+                  border: 2px solid black;
+                  background: rgb(171, 10, 10);
                   cursor: pointer;
-                  border: none;
                 `}
                 title={isCameraActive ? "Close camera" : "Take a photo"}
                 onClick={handleToggleCamera}
@@ -449,15 +452,13 @@ export default function PokedexLeft({
               <button
                 css={css`
                   width: 50px;
-                  height: 8px;
+                  height: 10px;
                   border-radius: 4px;
-                  background-color: blue;
+                  border: 2px solid black;
+                  background: rgb(39, 58, 183);
                   cursor: pointer;
-                  border: none;
-                  opacity: ${!crySoundLoaded || !currentPokemon ? 0.5 : 1};
                 `}
-                onClick={playCry}
-                disabled={!crySoundLoaded || !currentPokemon}
+                onClick={!crySoundLoaded || !currentPokemon ? null : playCry}
                 title="Play Pokémon cry"
               />
             </div>
@@ -468,7 +469,9 @@ export default function PokedexLeft({
             />
             <div
               css={css`
-                background: ${isListening ? "lightgreen" : "green"};
+                background: ${isListening
+                  ? "rgb(146, 226, 159)"
+                  : "rgb(81, 173, 96)"};
                 width: 120px;
                 height: 70px;
                 border-radius: 8px;
@@ -497,15 +500,13 @@ export default function PokedexLeft({
             <div className="d-pad-row">
               <button
                 className="d-pad-btn left"
-                onClick={() => cycleSprite("left")}
-                disabled={!currentPokemon}
+                onClick={!currentPokemon ? null : () => cycleSprite("left")}
                 title="Cycle Pokémon sprite"
               />
               <div className="d-pad-btn center"></div>
               <button
                 className="d-pad-btn right"
-                onClick={() => cycleSprite("right")}
-                disabled={!currentPokemon}
+                onClick={!currentPokemon ? null : () => cycleSprite("right")}
                 title="Cycle Pokémon sprite"
               />
             </div>

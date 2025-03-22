@@ -161,7 +161,6 @@ const searchButtonStyle = css`
   padding: 10px;
   background-color: ${theme.colors.pokedexBlack};
   color: white;
-  border: none;
   border-radius: ${theme.borders.radius.sm};
   cursor: pointer;
   font-family: ${theme.fonts.pixel};
@@ -225,7 +224,6 @@ const readButtonStyle = css`
   padding: 10px;
   background-color: ${theme.colors.pokedexBlack};
   color: white;
-  border: none;
   border-radius: ${theme.borders.radius.sm};
   cursor: pointer;
   font-family: ${theme.fonts.pixel};
@@ -270,9 +268,6 @@ export default function PokedexRight({
   isSpeaking,
   onSpeak,
   onStop,
-  stopListening,
-  setLoading,
-  stopSpeaking,
   handleProcessQuery,
   isPaused,
   onResume,
@@ -287,9 +282,6 @@ export default function PokedexRight({
     if (!userQuery || loading) return;
 
     setInput("");
-    stopListening();
-    setLoading(true);
-    stopSpeaking();
 
     await handleProcessQuery(userQuery);
   };
@@ -348,7 +340,7 @@ export default function PokedexRight({
               placeholder={
                 speechError === "microphone_access_error"
                   ? "Microphone access denied - type your query"
-                  : "Ask Pokédex... or press and hold 🎤 to speak"
+                  : "Type or ask a question, or take a photo of a Pokémon"
               }
               disabled={loading || isProcessing}
             />

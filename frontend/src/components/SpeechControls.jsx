@@ -22,7 +22,6 @@ const speechControlsStyle = css`
 `;
 
 const speechButtonStyle = css`
-  border: none;
   cursor: pointer;
   border-radius: 50%;
   background-color: ${theme.colors.pokedexBlack};
@@ -30,11 +29,10 @@ const speechButtonStyle = css`
   height: 48px;
   user-select: none;
   touch-action: none;
-  transition: transform 0.1s, background-color 0.2s;
+  transition: transform 0.1s, background-color 0.1s;
 
   &:active:not(:disabled) {
     transform: scale(0.95);
-    background-color: ${theme.colors.pokedexDarkRed};
   }
 
   &.listening {
@@ -43,7 +41,6 @@ const speechButtonStyle = css`
   }
 
   &.processing {
-    background-color: ${theme.colors.pokedexYellow};
     cursor: wait;
   }
 `;
