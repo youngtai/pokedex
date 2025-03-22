@@ -3,12 +3,17 @@ import { css } from "@emotion/react";
 
 const footerStyle = css`
   text-align: center;
-  padding: 20px;
+  padding: 15px;
   margin-top: 20px;
   font-family: "Press Start 2P", cursive;
-  font-size: 12px;
+  font-size: 10px;
   color: rgb(182, 225, 255);
   background-color: #1f1f1f;
+
+  @media (min-width: 768px) {
+    font-size: 12px;
+    padding: 20px;
+  }
 `;
 
 const linkStyle = css`
@@ -19,11 +24,24 @@ const linkStyle = css`
   }
 `;
 
+const linkContainerStyle = css`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const separatorStyle = css`
+  color: rgb(182, 225, 255);
+`;
+
 const Footer = () => {
   return (
     <footer css={footerStyle}>
-      <p>
-        Made by youngtai |{" "}
+      <div css={linkContainerStyle}>
+        <span>Made by youngtai</span>
+        <span css={separatorStyle}>|</span>
         <a
           href="https://github.com/youngtai/pokedex"
           target="_blank"
@@ -31,8 +49,8 @@ const Footer = () => {
           css={linkStyle}
         >
           GitHub
-        </a>{" "}
-        |{" "}
+        </a>
+        <span css={separatorStyle}>|</span>
         <a
           href="https://twitter.com/youngtaiahn"
           target="_blank"
@@ -41,7 +59,7 @@ const Footer = () => {
         >
           X
         </a>
-      </p>
+      </div>
     </footer>
   );
 };
