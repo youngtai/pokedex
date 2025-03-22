@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, keyframes } from "@emotion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import usePokemonCry from "../hooks/usePokemonCry";
 import { theme } from "../theme";
@@ -25,19 +25,43 @@ const topSectionStyle = css`
   border-bottom: 3px solid ${theme.colors.pokedexDarkRed};
 `;
 
-const lightStyle = (color, size, isSmall, isBlinking) => css`
+const createPulseKeyframes = (color) => keyframes`
+  0%, 100% { background-color: ${theme.colors[color]}; }
+  50% { background-color: ${getLighterColor(theme.colors[color])}; }
+`;
+
+const getLighterColor = (hex) => {
+  // Convert hex to RGB
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+
+  // Increase brightness
+  r = Math.min(255, r + 100);
+  g = Math.min(255, g + 75);
+  b = Math.min(255, b + 75);
+
+  // Convert back to hex
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+};
+
+const lightStyle = (color, size, isSmall, isBlinking, blinkDelay = 0) => css`
   position: relative;
   border-radius: 50%;
   width: ${isSmall ? size.small : size.large}px;
   height: ${isSmall ? size.small : size.large}px;
   background-color: ${theme.colors[color]};
   ${color === "pokedexBlue" &&
-  `
+  css`
     border: 5px solid white;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3),
       inset 0 0 10px rgba(255, 255, 255, 0.5);
     margin-right: auto;
-    animation: ${isBlinking ? "blueLightBlink 0.8s infinite" : "none"};
+    animation: ${isBlinking
+      ? css`
+          ${createPulseKeyframes("pokedexBlue")} 0.8s infinite
+        `
+      : "none"};
     &::after {
       content: "";
       position: absolute;
@@ -48,24 +72,9 @@ const lightStyle = (color, size, isSmall, isBlinking) => css`
       top: 5px;
       left: 5px;
     }
-
-    @keyframes blueLightBlink {
-      0% {
-        opacity: 1;
-        background-color: ${theme.colors.pokedexBlue};
-      }
-      50% {
-        opacity: 1;
-        background-color:rgb(143, 210, 255);
-      }
-      100% {
-        opacity: 1;
-        background-color: ${theme.colors.pokedexBlue};
-      }
-    }
   `}
   ${color !== "pokedexBlue" &&
-  `
+  css`
     border: 2px solid rgba(0, 0, 0, 0.2);
     margin-left: 10px;
     &::after {
@@ -78,6 +87,11 @@ const lightStyle = (color, size, isSmall, isBlinking) => css`
       top: 2px;
       left: 2px;
     }
+    animation: ${isBlinking
+      ? css`
+          ${createPulseKeyframes(color)} 0.8s infinite ${blinkDelay}s
+        `
+      : "none"};
   `}
 `;
 
@@ -307,21 +321,27 @@ export default function PokedexLeft({
           css={lightStyle(
             "pokedexLightRed",
             { small: 15, large: 20 },
-            isSmallScreen
+            isSmallScreen,
+            isProcessing,
+            0
           )}
         />
         <div
           css={lightStyle(
             "pokedexYellow",
             { small: 15, large: 20 },
-            isSmallScreen
+            isSmallScreen,
+            isProcessing,
+            0.2
           )}
         />
         <div
           css={lightStyle(
             "pokedexGreen",
             { small: 15, large: 20 },
-            isSmallScreen
+            isSmallScreen,
+            isProcessing,
+            0.4
           )}
         />
       </div>
