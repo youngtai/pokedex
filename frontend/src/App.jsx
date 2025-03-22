@@ -277,13 +277,13 @@ function App() {
         {
           title: "Welcome to the Pokédex!",
           content:
-            "I can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know? Type below or click the microphone icon to speak.",
+            "I'm here to help Pokémon trainers like you! Ask me anything about Pokémon.",
         },
       ],
     };
     setStructuredData(initialData);
     setDisplayText(
-      "# Welcome to the Pokédex!\n\nI can help you with information about Pokémon. Ask me anything, such as:\n\n- Tell me about Pikachu\n- What are the strengths and weaknesses of Charizard?\n- Compare Bulbasaur and Squirtle\n- Show me some water type Pokemon\n- Which Pokemon has the highest speed stat?\n\nWhat would you like to know? Type below or click the microphone icon to speak."
+      "# Welcome to the Pokédex!\n\nI'm here to help Pokémon trainers like you! Ask me anything about Pokémon."
     );
   }, []);
 
