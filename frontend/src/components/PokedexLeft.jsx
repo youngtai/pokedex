@@ -436,7 +436,6 @@ export default function PokedexLeft({
                   width: 50px;
                   height: 10px;
                   border-radius: 4px;
-                  border: 2px solid black;
                   background: rgb(171, 10, 10);
                   cursor: pointer;
                 `}
@@ -454,7 +453,6 @@ export default function PokedexLeft({
                   width: 50px;
                   height: 10px;
                   border-radius: 4px;
-                  border: 2px solid black;
                   background: rgb(39, 58, 183);
                   cursor: pointer;
                 `}
@@ -495,7 +493,7 @@ export default function PokedexLeft({
 
           <div css={dPadStyle(isSmallScreen)}>
             <div className="d-pad-row">
-              <div className="d-pad-btn up"></div>
+              <button className="d-pad-btn up" />
             </div>
             <div className="d-pad-row">
               <button
@@ -503,7 +501,7 @@ export default function PokedexLeft({
                 onClick={!currentPokemon ? null : () => cycleSprite("left")}
                 title="Cycle Pokémon sprite"
               />
-              <div className="d-pad-btn center"></div>
+              <button className="d-pad-btn center" />
               <button
                 className="d-pad-btn right"
                 onClick={!currentPokemon ? null : () => cycleSprite("right")}
@@ -511,7 +509,7 @@ export default function PokedexLeft({
               />
             </div>
             <div className="d-pad-row">
-              <div className="d-pad-btn down"></div>
+              <button className="d-pad-btn down" />
             </div>
           </div>
         </div>

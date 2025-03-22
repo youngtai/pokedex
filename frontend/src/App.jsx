@@ -6,6 +6,8 @@ import useSpeechRecognition from "./hooks/useSpeechRecognition";
 import useSpeechSynthesis from "./hooks/useSpeechSynthesis";
 import { theme } from "./theme";
 import { getAvailableSpriteKeys } from "./utils/spriteUtils";
+import FAQ from "./components/FAQ";
+import Footer from "./components/Footer";
 
 const pokedexContainerStyle = css`
   display: flex;
@@ -278,7 +280,7 @@ function App() {
     const initialData = {
       sections: [
         {
-          title: "Welcome to the Pokédex!",
+          title: "Welcome to Pokédex!",
           content:
             "I'm here to help Pokémon trainers like you! Ask me anything about Pokémon.",
         },
@@ -286,7 +288,7 @@ function App() {
     };
     setStructuredData(initialData);
     setDisplayText(
-      "# Welcome to the Pokédex!\n\nI'm here to help Pokémon trainers like you! Ask me anything about Pokémon."
+      "# Welcome to Pokédex!\n\nI'm here to help Pokémon trainers like you! Ask me anything about Pokémon."
     );
   }, []);
 
@@ -613,6 +615,10 @@ function App() {
           onResume={toggleSpeaking}
         />
       </div>
+
+      <FAQ />
+
+      <Footer />
     </ThemeProvider>
   );
 }
