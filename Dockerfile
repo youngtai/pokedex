@@ -19,12 +19,19 @@ RUN pnpm run build
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 WORKDIR /app
 
-# Install dependencies using uv
-COPY backend/pyproject.toml backend/README.md ./
-RUN uv pip install --system .
+# Install PostgreSQL client libraries
+RUN apk add --no-cache postgresql-libs && \
+  apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev
 
-# Copy application code
+# Copy backend code first, including setup.py
 COPY backend/ ./backend/
+
+# Install dependencies using uv
+RUN uv pip install --system "asyncpg" "sqlalchemy[asyncio]" "alembic"
+RUN uv pip install --system -e ./backend
+
+# Remove build dependencies
+RUN apk --purge del .build-deps
 
 # Copy frontend build from previous stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
@@ -33,5 +40,4 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 ENV PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1
 
-# We now only need to run the web service, which will manage the MCP server internally
-CMD ["python", "-m", "backend.web-service.app.service"]
+CMD ["python", "-m", "backend.web_service.app.service"]

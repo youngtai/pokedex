@@ -19,6 +19,12 @@ lerna-debug.log*
 /backend/.env
 /backend/.ruff_cache
 **.old.py
+**/__pycache__
+*.egg-info/
+*.egg
+
+# Local
+.env
 
 # Docs
 *-docs.md
@@ -35,4 +41,4 @@ lerna-debug.log*
 *.sw?
 
 # Deploy
-*.sh
+build-and-push.sh

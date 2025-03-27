@@ -4,12 +4,14 @@ import json
 import logging
 import os
 import re
+import subprocess
 from contextlib import AsyncExitStack
 from functools import partial
 from typing import Annotated, Any, Dict, Optional
 
 import uvicorn
 from anthropic import Anthropic
+from backend.db.database import init_db
 from dotenv import load_dotenv
 from groq import Groq
 from litestar import Litestar, MediaType, post
@@ -44,7 +46,7 @@ class MCPClient:
         server_params = StdioServerParameters(
             command="python",
             args=["-m", "backend.mcp_server.app.pokeapi_mcp_server"],
-            env=None,
+            env={"DATABASE_URL": os.environ.get("DATABASE_URL")},
         )
 
         self.stdio, self.write = await self.exit_stack.enter_async_context(
@@ -634,6 +636,20 @@ def convert_structured_to_markdown(structured_data):
 async def startup() -> None:
     logger.info("Running app starup")
     await mcp_client.initialize_session()
+
+    logger.info("Initializing database connection")
+    await init_db()
+    logger.info("Running database migrations")
+    try:
+        migrations_dir = "backend/db/migrations"
+        subprocess.run(
+            ["alembic", "--config", f"{migrations_dir}/alembic.ini", "upgrade", "head"],
+            check=True,
+        )
+        logger.info("Database migrations completed successfully")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error running database migrations: {str(e)}")
+        # Consider whether to fail startup or continue
 
 
 async def cleanup() -> None:

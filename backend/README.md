@@ -1,1 +1,1 @@
-# README for Pokedex backend
+# README for Pokedexyz backend
